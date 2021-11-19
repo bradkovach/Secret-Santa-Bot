@@ -1,5 +1,5 @@
 export interface BanRow {
-    userId: number;
-    reason: string;
-    date: number;
+	userId: number;
+	reason: string;
+	date: number;
 }

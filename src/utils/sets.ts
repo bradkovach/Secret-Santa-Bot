@@ -6,7 +6,7 @@ var bannedUsers: Set<string> = new Set();
 // Admin IDs, add yourself to this in config.json
 const adminUsers: Set<string> = new Set(config.adminUsers);
 
-export const sets =  {
+export const sets = {
 	bannedUsers,
 	adminUsers,
 };
