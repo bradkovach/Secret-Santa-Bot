@@ -1,9 +1,10 @@
-import { Message } from "discord.js";
+import { Message } from 'discord.js';
 
 export interface ICommand {
 	name: string;
 	aliases: string[];
 	description: string;
+	usage: string;
 	hasArgs: boolean;
 	requirePartner: boolean;
 	worksInDM: boolean;

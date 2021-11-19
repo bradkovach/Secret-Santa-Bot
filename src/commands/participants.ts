@@ -1,13 +1,15 @@
-import { Message } from "discord.js";
+import { Message } from 'discord.js';
+import { ICommand } from '../ICommand';
 
 const Discord = require('discord.js');
 const { query } = require('../mysql');
 const config = require('../config.json');
 const methods = require('../utils/methods');
 
-export default{
+const command: ICommand = {
 	name: 'participants',
 	aliases: ['exchangeinfo', 'listparticipants'],
+	usage: 'participants',
 	description: 'Show who is participating in your Secret Santa.',
 	hasArgs: false,
 	requirePartner: false,
@@ -18,29 +20,44 @@ export default{
 
 	async execute(message: Message, args: string[], prefix: string) {
 		const row = (
-			await query(`SELECT * FROM users WHERE userId = ${message.author.id}`)
+			await query(
+				`SELECT * FROM users WHERE userId = ${message.author.id}`
+			)
 		)[0];
-		const rows = await query(`SELECT * FROM users WHERE exchangeId = ${row.exchangeId}`);
+		const rows = await query(
+			`SELECT * FROM users WHERE exchangeId = ${row.exchangeId}`
+		);
 		const exchangeRow = (
-			await query(`SELECT * FROM exchange WHERE exchangeId = ${row.exchangeId}`)
+			await query(
+				`SELECT * FROM exchange WHERE exchangeId = ${row.exchangeId}`
+			)
 		)[0];
 
-		if (row.exchangeId == 0) return message.reply("You aren't in a Secret Santa.");
+		if (row.exchangeId == 0)
+			return message.reply("You aren't in a Secret Santa.");
 
 		var userTags = [];
 
 		for (var i = 0; i < rows.length; i++) {
-			userTags.push((await message.client.users.fetch(rows[i].userId)).tag);
+			userTags.push(
+				(await message.client.users.fetch(rows[i].userId)).tag
+			);
 		}
 
 		const embed = new Discord.MessageEmbed()
 			.setTitle('__Participants__')
-			.setDescription(userTags.map((user, index) => index + 1 + '. ' + user).join('\n'))
+			.setDescription(
+				userTags.map((user, index) => index + 1 + '. ' + user).join('\n')
+			)
 			.setColor(config.embeds_color)
 			.setFooter(
-				'Started by ' + (await message.client.users.fetch(exchangeRow.creatorId)).username
+				'Started by ' +
+					(await message.client.users.fetch(exchangeRow.creatorId))
+						.username
 			);
 
 		message.channel.send(embed);
 	},
 };
+
+export default command;

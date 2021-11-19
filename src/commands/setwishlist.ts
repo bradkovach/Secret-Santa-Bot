@@ -1,10 +1,14 @@
-import { Message } from "discord.js";
-import { query } from "../mysql";
+import { Message } from 'discord.js';
+import { ICommand } from '../ICommand';
+import { query } from '../mysql';
 
-export default{
-	name: 'setwishlist',
-	aliases: ['wishlist'],
-	description: 'Edit your preferences so your Secret Santa knows what to get you!',
+const command: ICommand = {
+	name: 'profile',
+	aliases: ['wishlist', 'setwishlist'],
+	usage:
+		'profile <description of you including your likes, dislikes, allergies, hobbies, pets, etc>',
+	description:
+		'Tell a little about yourself so your Secret Santa knows what to get you!',
 	hasArgs: true,
 	requirePartner: false,
 	worksInDM: true,
@@ -21,10 +25,15 @@ export default{
 			);
 		}
 
-		await query<never>(`UPDATE users SET wishlist = ? WHERE userId = ${message.author.id}`, [
-			wishlistToSet,
-		]);
+		await query<never>(
+			`UPDATE users SET wishlist = ? WHERE userId = ${message.author.id}`,
+			[wishlistToSet]
+		);
 
-		message.reply('**Successfully set your preferences to:**\n\n' + wishlistToSet);
+		message.reply(
+			'**Successfully set your preferences to:**\n\n' + wishlistToSet
+		);
 	},
 };
+
+export default command;

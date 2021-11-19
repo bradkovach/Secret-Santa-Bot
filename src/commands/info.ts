@@ -1,13 +1,15 @@
-import { Message } from "discord.js";
+import { Message } from 'discord.js';
+import { ICommand } from '../ICommand';
 
 const Discord = require('discord.js');
 const { version } = require('../../package.json');
 const os = require('os');
 const config = require('../config.json');
 
-export default{
+const command: ICommand = {
 	name: 'info',
 	aliases: ['botinfo', 'update', 'version', 'stats'],
+	usage: 'info',
 	description: 'Displays various information about the bot.',
 	hasArgs: false,
 	requirePartner: false,
@@ -28,14 +30,23 @@ export default{
 		embedInfo.setDescription(
 			'Secret Santa bot made by [blobfysh](https://github.com/blobfysh).'
 		);
-		embedInfo.addField('Active Servers', message.client.guilds.cache.size, true);
+		embedInfo.addField(
+			'Active Servers',
+			message.client.guilds.cache.size,
+			true
+		);
 		embedInfo.addField('Version', '`' + version + '`', true);
 		embedInfo.addField(
 			'Memory Usage',
-			Math.round(used) + '/' + Math.round(os.totalmem() / 1024 / 1024) + ' MB',
+			Math.round(used) +
+				'/' +
+				Math.round(os.totalmem() / 1024 / 1024) +
+				' MB',
 			true
 		);
 		embedInfo.addField('Creators', 'blobfysh#4679', true);
 		message.channel.send(embedInfo);
 	},
 };
+
+export default command;
