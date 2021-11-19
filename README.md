@@ -1,4 +1,18 @@
 # Secret-Santa-Bot
+
+This is a quick TypeScript refactor of [blobfysh/Secret-Santa-Bot](https://github.com/blobfysh/Secret-Santa-Bot).
+
+It also includes a docker-compose.yml file to bring up a quick DB instance.
+
+To get started
+
+```bash
+npm install
+docker-compose -d up
+npx tsc
+node dist/index.js
+```
+
 <p align="center">
   <img width="120" height="120" src="https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/120/microsoft/209/father-christmas_1f385.png">
 </p>
@@ -9,17 +23,17 @@
 
 <h3>Commands</h3>
 
-| Name      |  Description                      | Usage                     |
-|:------:   |:---------------------------------:|:-------------------------:|
-| `help`    | View all the command, you can also specify a command to get more information.    | `s!help [command]` |
-| `create`  | Create a new Secret Santa for everyone to join.    | `s!create` |
-| `start`   | Assigns everyone a random partner (use this after you've created).    | `s!start` |
-| `setwishlist`| Edit your gift preferences.    | `s!setwishlist <preferences here>` |
-| `partnerinfo`| View your partners gift preferences.    | `s!partnerinfo` |
-| `participants`| Show a list of who's participating in your Secret Santa.   | `s!participants` |
-| `message` | Message your secret gifter or giftee, the bot will hide your name.    | `s!message <gifter/giftee> <message to send>` |
-| `cancel` | Cancels your Secret Santa.    | `s!cancel` |
-| `info` | View information about the bot like memory usage, server count.    | `s!info` |
+|      Name      |                                  Description                                  |                     Usage                     |
+| :------------: | :---------------------------------------------------------------------------: | :-------------------------------------------: |
+|     `help`     | View all the command, you can also specify a command to get more information. |              `s!help [command]`               |
+|    `create`    |                Create a new Secret Santa for everyone to join.                |                  `s!create`                   |
+|    `start`     |      Assigns everyone a random partner (use this after you've created).       |                   `s!start`                   |
+| `setwishlist`  |                          Edit your gift preferences.                          |      `s!setwishlist <preferences here>`       |
+| `partnerinfo`  |                     View your partners gift preferences.                      |                `s!partnerinfo`                |
+| `participants` |           Show a list of who's participating in your Secret Santa.            |               `s!participants`                |
+|   `message`    |      Message your secret gifter or giftee, the bot will hide your name.       | `s!message <gifter/giftee> <message to send>` |
+|    `cancel`    |                          Cancels your Secret Santa.                           |                  `s!cancel`                   |
+|     `info`     |        View information about the bot like memory usage, server count.        |                   `s!info`                    |
 
 <h1 align="center">Self-host Instructions</h1>
 
@@ -33,10 +47,13 @@
 2. Rename `config_example.json` to `config.json` and add your own token to botToken (You can register a new Discord bot at: https://discordapp.com/developers/applications/)
 3. Create a new MySQL database with the same database name you have in `config.json` (Default is secret_santa)
 4. Run command prompt in the folder and execute the following:
+
 ```shell
 npm install
 ```
+
 After that the bot should be ready! Now just start it:
+
 ```shell
 node app.js
 ```
