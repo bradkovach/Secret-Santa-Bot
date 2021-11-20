@@ -1,3 +1,5 @@
+import { MessageEmbed } from 'discord.js';
+import { EmbedFieldData } from 'discord.js';
 import { Message } from 'discord.js';
 import { ICommand } from '../ICommand';
 
@@ -5,6 +7,10 @@ const Discord = require('discord.js');
 const { query } = require('../mysql');
 const config = require('../config.json');
 const methods = require('../utils/methods');
+
+function code (subject: string) {
+	return `\`${subject}\``;
+}
 
 const command: ICommand = {
 	name: 'help',
@@ -20,15 +26,15 @@ const command: ICommand = {
 
 	async execute(message: Message, args: string[], prefix: string) {
 		if (args[0] == undefined) {
-			var helpArr = message.client.commands
+			var helpArr: EmbedFieldData[] = message.client.commands
 				.filter((cmd) => !cmd.adminOnly && cmd.name !== 'help')
-				.map((cmd) => '`' + cmd.name + '` - ' + cmd.description);
+				.map(
+					(cmd) => ({ name: cmd.name == cmd.usage ? code(cmd.name) : code(cmd.usage), value: `${cmd.forceDMsOnly ? '**DM Only** ' : ''}${cmd.description}`})
+				);
 
-			const helpEmbed = new Discord.MessageEmbed()
+			const helpEmbed = new MessageEmbed()
 				.setTitle('__Commands__')
-				.setDescription(
-					helpArr.map((cmd, index) => index + 1 + '. ' + cmd)
-				)
+				.addFields(helpArr)
 				.setFooter(
 					'Use ' + prefix + 'help <command> to see more about a command.'
 				)
