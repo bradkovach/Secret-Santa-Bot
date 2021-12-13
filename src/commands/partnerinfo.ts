@@ -44,7 +44,9 @@ const command: ICommand = {
 			.addField('Profile', wishList)
 			.addField('Address', address)
 			.setColor(config.embeds_color)
-			.setFooter('Need more info? Message them with the message command! `s!help message` for more info.');
+			.setFooter(
+				'Need more info? Message them with the message command! `s!help message` for more info.'
+			);
 
 		message.channel.send(partnerEmbed);
 	},

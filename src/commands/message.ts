@@ -34,17 +34,16 @@ const command: ICommand = {
 		)[0];
 
 		const recipient = args[0].toLowerCase();
-		const usageMessage =[
+		const usageMessage = [
 			`You need to specify who you're going to message! \`${prefix}${this.usage}\``,
 			'',
 			`giftee - the person you were chosen to get a gift for (<@${userRow.partnerId}>).`,
-			`santa - the person gifting you (secret).`
+			`santa - the person gifting you (secret).`,
 		].join('\n');
 
 		if (userRow.exchangeId == 0)
 			return message.reply("You aren't in a Secret Santa.");
-		else if (!args.length)
-			return message.reply( usageMessage );
+		else if (!args.length) return message.reply(usageMessage);
 		else if (
 			recipient !== 'giftee' &&
 			recipient !== 'santa' &&
