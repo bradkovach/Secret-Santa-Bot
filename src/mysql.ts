@@ -25,39 +25,11 @@ export const db = mysql.createConnection({
 	charset: 'utf8mb4',
 });
 
-const createUsersSQL = `create table if not exists users
-(
-	userId bigint default 0 not null,
-	exchangeId bigint default 0 not null,
-	wishlist varchar(1000) default '' not null,
-	address varchar(1000) default '' not null,
-	partnerId bigint default 0 not null,
-	tracking_number varchar(100) default '' not null,
-	received tinyint(1) default 0 not null
-)
-charset=utf8mb4
+const createUsersSQL = require('./sql/createTable_users.sql');
 
+const createExchangeSQL = require('./sql/createTable_exchange.sql');
 
-`;
-
-const createExchangeSQL = `create table if not exists exchange
-(
-	exchangeId bigint null,
-	creatorId bigint null,
-	started tinyint null,
-	description varchar(1000) null
-)
-charset=utf8mb4
-`;
-
-const createBannedSQL = `create table if not exists banned
-(
-	userId bigint null,
-	reason varchar(2048) null,
-	date bigint null
-)
-charset=utf8mb4
-`;
+const createBannedSQL = require('./sql/createTable_banned.sql');
 
 db.connect((err: any) => {
 	if (err)
