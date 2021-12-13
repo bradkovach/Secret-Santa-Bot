@@ -3,6 +3,7 @@ import { Message } from 'discord.js';
 import { ICommand } from '../ICommand';
 import { query } from '../mysql';
 import { UserRow } from '../rows/UserRow';
+import { getUserById } from '../sql/queries';
 
 const Discord = require('discord.js');
 const config = require('../config.json');
@@ -22,14 +23,10 @@ const command: ICommand = {
 
 	async execute(message: Message, args: string[], prefix: string) {
 		const row = (
-			await query<UserRow[]>(`SELECT * FROM users WHERE userId = ?`, [
-				message.author.id,
-			])
+			await query<UserRow[]>(getUserById, [message.author.id])
 		)[0];
 		const partnerRow = (
-			await query<UserRow[]>(`SELECT * FROM users WHERE userId = ?`, [
-				row.partnerId,
-			])
+			await query<UserRow[]>(getUserById, [row.partnerId])
 		)[0];
 		const wishList = partnerRow.wishlist || 'No preferences.';
 		const address = partnerRow.address || 'No address.';

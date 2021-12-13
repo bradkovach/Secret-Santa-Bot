@@ -25,14 +25,13 @@ export const db = mysql.createConnection({
 	charset: 'utf8mb4',
 });
 
-
 import sqlQueries from './sql/createTables';
 
 export const createUsersSQL = sqlQueries.tables.users;
 
 export const createExchangeSQL = sqlQueries.tables.exchange;
 
-export const createBannedSQL = sqlQueries.tables.banned
+export const createBannedSQL = sqlQueries.tables.banned;
 
 db.connect((err: any) => {
 	if (err)

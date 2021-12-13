@@ -3,6 +3,7 @@ import { ICommand } from '../ICommand';
 import { query } from '../mysql';
 import { ExchangeRow } from '../rows/ExchangeRow';
 import { UserRow } from '../rows/UserRow';
+import { getUserById } from '../sql/queries';
 import logger from '../utils/logger';
 import { pickRandom } from '../utils/pickRandom';
 
@@ -22,9 +23,7 @@ const command: ICommand = {
 
 	async execute(message: Message, args: string[], prefix: string) {
 		const row = (
-			await query<UserRow[]>(`SELECT * FROM users WHERE userId = ?`, [
-				message.author.id,
-			])
+			await query<UserRow[]>(getUserById, [message.author.id])
 		)[0];
 		const exchangeRow = (
 			await query<(UserRow & ExchangeRow)[]>(

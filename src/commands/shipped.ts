@@ -5,6 +5,7 @@ import config from '../config.json';
 import receivedCommand from './received';
 import { ICommand } from '../ICommand';
 import logger from '../utils/logger';
+import { getUserById } from '../sql/queries';
 
 const command: ICommand = {
 	name: 'shipped',
@@ -24,7 +25,7 @@ const command: ICommand = {
 		prefix: string
 	) {
 		const santaRow = (
-			await query<UserRow[]>(`SELECT * FROM users WHERE userId = ?`, [
+			await query<UserRow[]>(getUserById, [
 				shippingNotificationMessage.author.id,
 			])
 		)[0];
@@ -39,9 +40,7 @@ const command: ICommand = {
 		}
 
 		const gifteeRow = (
-			await query<UserRow[]>(`SELECT * FROM users WHERE userId = ?`, [
-				santaRow.partnerId,
-			])
+			await query<UserRow[]>(getUserById, [santaRow.partnerId])
 		)[0];
 		if (!gifteeRow) {
 			return await shippingNotificationMessage

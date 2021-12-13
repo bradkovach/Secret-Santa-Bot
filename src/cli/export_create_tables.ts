@@ -35,49 +35,42 @@ database.with(async (conn) => {
 		userCreateStatement,
 		bannedCreateStatement,
 		exchangeCreateStatement,
-	].reduce((object, result) => {
-		const table = result[0].Table,
-			statement = result[0]['Create Table'].replace(
-				'CREATE TABLE `',
-				'CREATE TABLE IF NOT EXISTS `'
-			);
+	].reduce(
+		(object, result) => {
+			const table = result[0].Table,
+				statement = result[0]['Create Table'].replace(
+					'CREATE TABLE `',
+					'CREATE TABLE IF NOT EXISTS `'
+				);
 
+			object.tables[table] = statement;
 
+			return object;
+		},
+		{ tables: <Record<string, string>>{} }
+	);
 
-        object.tables[table] = statement;
+	console.log(resultObj);
 
-        return object
-
-		// // console.log({ [table]: statement });
-		// writeFile(filepath, statement, (err) => {
-		// 	if (err) {
-		// 		console.error('Unable to write sql statement to file...', {
-		// 			filepath,
-		// 			err,
-		// 		});
-		// 	}
-		// 	console.log(`Wrote ${table} create statement to ${filepath}`);
-		// });
-	}, {tables: <Record<string,string>>{}});
-
-    console.log(resultObj)
-
-    let exportString = [
-        "import {ISqlQueries} from './ISqlQueries';",
-        '',
-        `const queries: ISqlQueries = ${ JSON.stringify(resultObj, null, '\t') };`,
-        '',
-        `export default queries;`
-    ].join('\n');
-    //`importexport default ${};`;
-		let filepath = path.resolve(
-			process.argv[1],
-			'..',
-			'..',
-			'..',
-			'src',
-			'sql',
-			`createTables.ts`
-		);
-        writeFileSync(filepath, exportString, 'utf8')
+	const exportString = [
+		"import { ISqlQueries } from './ISqlQueries';",
+		'',
+		`const queries: ISqlQueries = ${JSON.stringify(
+			resultObj,
+			null,
+			'\t'
+		)};`,
+		'',
+		`export default queries;`,
+	].join('\n');
+	const filepath = path.resolve(
+		process.argv[1],
+		'..',
+		'..',
+		'..',
+		'src',
+		'sql',
+		`createTables.ts`
+	);
+	writeFileSync(filepath, exportString, 'utf8');
 });

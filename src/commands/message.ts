@@ -8,6 +8,7 @@ import { query } from '../mysql';
 import config from '../config.json';
 import { UserRow } from '../rows/UserRow';
 import { ExchangeRow } from '../rows/ExchangeRow';
+import { getUserById } from '../sql/queries';
 
 const command: ICommand = {
 	name: 'message',
@@ -23,9 +24,7 @@ const command: ICommand = {
 
 	async execute(message: Message, args: string[], prefix: string) {
 		const userRow = (
-			await query<UserRow[]>(`SELECT * FROM users WHERE userId = ?`, [
-				message.author.id,
-			])
+			await query<UserRow[]>(getUserById, [message.author.id])
 		)[0];
 		const santaRow = (
 			await query<UserRow[]>(`SELECT * FROM users WHERE partnerId = ?`, [

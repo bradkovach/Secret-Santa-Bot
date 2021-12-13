@@ -2,6 +2,7 @@ import { Message, MessageEmbed } from 'discord.js';
 import { ICommand } from '../ICommand';
 import { query } from '../mysql';
 import { UserRow } from '../rows/UserRow';
+import { getUserById } from '../sql/queries';
 import logger from '../utils/logger';
 
 import addressCommand from './address';
@@ -20,10 +21,7 @@ const command: ICommand = {
 	adminOnly: false,
 
 	async execute(message: Message, args: string[], prefix: string) {
-		const users = await query<UserRow[]>(
-			`SELECT * from users WHERE userId = ?`,
-			[message.author.id]
-		);
+		const users = await query<UserRow[]>(getUserById, [message.author.id]);
 		if (users && users[0]) {
 			const userRow = users[0];
 

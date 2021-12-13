@@ -1,4 +1,4 @@
-import {ISqlQueries} from './ISqlQueries';
+import { ISqlQueries } from './ISqlQueries';
 
 const queries: ISqlQueries = {
 	"tables": {

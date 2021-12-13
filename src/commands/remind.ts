@@ -12,6 +12,7 @@ import address from './address';
 import shipped from './shipped';
 import received from './received';
 import logger from '../utils/logger';
+import { getUserById } from '../sql/queries';
 
 const command: ICommand = {
 	name: 'remind',
@@ -29,11 +30,7 @@ const command: ICommand = {
 		if (config.adminUsers.indexOf(user.id) < 0) {
 			return;
 		}
-		const userRow = (
-			await query<UserRow[]>(`SELECT * FROM users WHERE userId = ?`, [
-				user.id,
-			])
-		)[0];
+		const userRow = (await query<UserRow[]>(getUserById, [user.id]))[0];
 		if (!userRow) {
 			console.log('unable to find exchange owned by creator');
 		}
