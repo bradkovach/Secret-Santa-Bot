@@ -25,11 +25,14 @@ export const db = mysql.createConnection({
 	charset: 'utf8mb4',
 });
 
-const createUsersSQL = require('./sql/createTable_users.sql');
 
-const createExchangeSQL = require('./sql/createTable_exchange.sql');
+import sqlQueries from './sql/createTables';
 
-const createBannedSQL = require('./sql/createTable_banned.sql');
+export const createUsersSQL = sqlQueries.tables.users;
+
+export const createExchangeSQL = sqlQueries.tables.exchange;
+
+export const createBannedSQL = sqlQueries.tables.banned
 
 db.connect((err: any) => {
 	if (err)
