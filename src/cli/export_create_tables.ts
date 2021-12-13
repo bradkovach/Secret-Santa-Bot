@@ -19,15 +19,15 @@ database.with(async (conn) => {
 			});
 		});
 	const userCreateStatement = (await pQuery(
-		`show create table users`,
+		'SHOW CREATE TABLE `users`',
 		[]
 	)) as unknown as CreateTableResult;
 	const bannedCreateStatement = (await pQuery(
-		`show create table banned`,
+		'SHOW CREATE TABLE `banned`',
 		[]
 	)) as unknown as CreateTableResult;
 	const exchangeCreateStatement = (await pQuery(
-		`show create table exchange`,
+		'SHOW CREATE TABLE `exchange`',
 		[]
 	)) as unknown as CreateTableResult;
 
@@ -49,8 +49,6 @@ database.with(async (conn) => {
 		},
 		{ tables: <Record<string, string>>{} }
 	);
-
-	console.log(resultObj);
 
 	const exportString = [
 		"import { ISqlQueries } from './ISqlQueries';",
