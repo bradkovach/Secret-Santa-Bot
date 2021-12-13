@@ -3,6 +3,7 @@ import { query } from '../mysql';
 import { UserRow } from '../rows/UserRow';
 import config from '../config.json';
 import { ICommand } from '../ICommand';
+import logger from '../utils/logger';
 
 const command: ICommand = {
 	name: 'received',
@@ -23,7 +24,11 @@ const command: ICommand = {
 	) {
 		const santaRow = (
 			await query<UserRow[]>(
-				`SELECT * FROM users WHERE partnerId = ${receiptNotificationMessage.author.id} AND tracking_number <> ''`
+				`SELECT * 
+				FROM users 
+				WHERE partnerId = ? 
+				AND received = 0`,
+				[receiptNotificationMessage.author.id]
 			)
 		)[0];
 		if (!santaRow) {
@@ -33,7 +38,8 @@ const command: ICommand = {
 		}
 
 		const updateResult = await query<never>(
-			`UPDATE users SET received = 1 WHERE partnerId = ${receiptNotificationMessage.author.id};`
+			`UPDATE users SET received = 1 WHERE partnerId = ?`,
+			[receiptNotificationMessage.author.id]
 		);
 		console.log({ updateResult });
 
@@ -78,7 +84,11 @@ const command: ICommand = {
 						message.react('✅'),
 					])
 				),
-		]);
+		]).then((allSent) =>
+			logger.info(
+				`[received] Giftee ${giftee.tag} (${giftee.id}) has received their gift from ${santa.tag} (${santa.id}).`
+			)
+		);
 	},
 };
 

@@ -1,4 +1,6 @@
-import * as mysql from 'mysql';
+// import * as mysql from 'mysql';
+import mysql from 'mysql2';
+
 import { config } from 'dotenv';
 
 export interface SecretSantaConfig {
@@ -12,7 +14,7 @@ export interface SecretSantaConfig {
 
 const resolvedConfig = config().parsed as unknown as SecretSantaConfig;
 
-export const db: mysql.Connection = mysql.createConnection({
+export const db = mysql.createConnection({
 	host: resolvedConfig.MYSQLDB_HOST,
 	user: resolvedConfig.MYSQLDB_USER,
 	password: resolvedConfig.MYSQLDB_ROOT_PASSWORD,
@@ -23,25 +25,39 @@ export const db: mysql.Connection = mysql.createConnection({
 	charset: 'utf8mb4',
 });
 
-const createUsersSQL = `
-CREATE TABLE IF NOT EXISTS users (
-    userId BIGINT,
-    exchangeId BIGINT,
-    wishlist VARCHAR(1000),
-    partnerId BIGINT)
-    ENGINE = InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci
+const createUsersSQL = `create table if not exists users
+(
+	userId bigint default 0 not null,
+	exchangeId bigint default 0 not null,
+	wishlist varchar(1000) default '' not null,
+	address varchar(1000) default '' not null,
+	partnerId bigint default 0 not null,
+	tracking_number varchar(100) default '' not null,
+	received tinyint(1) default 0 not null
+)
+charset=utf8mb4
+
+
 `;
 
-const createExchangeSQL = `
-CREATE TABLE IF NOT EXISTS exchange (
-    exchangeId BIGINT,
-    creatorId BIGINT,
-    started TINYINT,
-    description VARCHAR(1000))
-    ENGINE = InnoDB
+const createExchangeSQL = `create table if not exists exchange
+(
+	exchangeId bigint null,
+	creatorId bigint null,
+	started tinyint null,
+	description varchar(1000) null
+)
+charset=utf8mb4
 `;
 
-const createBannedSQL = `CREATE TABLE IF NOT EXISTS banned (userId bigint, reason VARCHAR(2048), date bigint) ENGINE = InnoDB`;
+const createBannedSQL = `create table if not exists banned
+(
+	userId bigint null,
+	reason varchar(2048) null,
+	date bigint null
+)
+charset=utf8mb4
+`;
 
 db.connect((err: any) => {
 	if (err)

@@ -4,6 +4,7 @@ import { UserRow } from '../rows/UserRow';
 import config from '../config.json';
 import receivedCommand from './received';
 import { ICommand } from '../ICommand';
+import logger from '../utils/logger';
 
 const command: ICommand = {
 	name: 'shipped',
@@ -23,49 +24,63 @@ const command: ICommand = {
 		prefix: string
 	) {
 		const santaRow = (
-			await query<UserRow[]>(
-				`SELECT * FROM users WHERE userId = ${shippingNotificationMessage.author.id}`
-			)
+			await query<UserRow[]>(`SELECT * FROM users WHERE userId = ?`, [
+				shippingNotificationMessage.author.id,
+			])
 		)[0];
 		if (!santaRow) {
-			return await shippingNotificationMessage.reply(
-				'Problem fetching your santa details'
-			);
+			return await shippingNotificationMessage
+				.reply('Problem fetching your santa details')
+				.then((newMessage) =>
+					logger.error(
+						`[shipped] Unable to find santa with id ${shippingNotificationMessage.author.id}.`
+					)
+				);
 		}
 
 		const gifteeRow = (
-			await query<UserRow[]>(
-				`SELECT * FROM users WHERE userId = ${santaRow.partnerId}`
-			)
+			await query<UserRow[]>(`SELECT * FROM users WHERE userId = ?`, [
+				santaRow.partnerId,
+			])
 		)[0];
 		if (!gifteeRow) {
-			return await shippingNotificationMessage.reply(
-				'Problem fetching your giftee details.'
-			);
+			return await shippingNotificationMessage
+				.reply('Problem fetching your giftee details.')
+				.then((newMessage) =>
+					logger.error(
+						`[shipped] Unable to find giftee with id ${santaRow.partnerId}.`
+					)
+				);
 		}
 
 		const santa = await shippingNotificationMessage.client.users.fetch(
 			santaRow.userId.toString()
 		);
 		if (!santa) {
-			return console.log('Unable to find santa in Discord.');
+			return logger.error(
+				`Unable to fetch() Santa by ${santaRow.userId} in Discord.`
+			);
 		}
 
 		const giftee = await shippingNotificationMessage.client.users.fetch(
 			gifteeRow.userId.toString()
 		);
 		if (!giftee) {
-			return await shippingNotificationMessage.reply(
-				'Unable to find your giftee in Discord'
-			);
+			return await shippingNotificationMessage
+				.reply('Unable to find your giftee in Discord')
+				.then((newMessage) =>
+					logger.error(
+						`[shipped] Unable to fetch() Giftee by ${gifteeRow.userId} in Discord.`
+					)
+				);
 		}
 
 		if (args && args[0] && args[0].trim() !== '') {
-			const trackingNumber = args[0].trim();
+			const trackingNumber = args.join(' ');
 			// store the tracking number in the santaRow
 			query<never>(
-				`UPDATE users SET tracking_number = ? WHERE userId = ${santaRow.userId}`,
-				trackingNumber
+				`UPDATE users SET tracking_number = ? WHERE userId = ?`,
+				[trackingNumber, santaRow.userId]
 			);
 
 			// send the giftee a message
@@ -79,11 +94,11 @@ const command: ICommand = {
 
 			if (!gifteeNotification) {
 				return await shippingNotificationMessage.reply(
-					'Unable to notify your giftee about your package. Try again later.'
+					'Unable to notify your giftee about your shipment. Try again later.'
 				);
 			} else {
-				console.log(
-					`Notified ${giftee.username} that ${santa.username} shipped their gift with tracking number ${trackingNumber}.`
+				logger.info(
+					`[shipped] ${santa.tag} (${santa.id}) shipped their gift to ${giftee.tag} (${giftee.id}) with tracking number ${trackingNumber}.`
 				);
 			}
 

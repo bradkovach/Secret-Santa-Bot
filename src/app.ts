@@ -6,6 +6,7 @@ import {
 	MessageReaction,
 	PartialUser,
 	User,
+	Permissions,
 } from 'discord.js';
 import fs from 'fs';
 import { handleCmd } from './commandhandler';
@@ -39,6 +40,7 @@ const commandFiles = fs
 for (const file of commandFiles) {
 	const filepath = path.resolve(process.cwd(), 'dist', 'commands', file);
 	const command = require(filepath).default;
+	console.log(`+ ${command.name}`);
 	client.commands.set(command.name, command);
 }
 
@@ -76,6 +78,37 @@ client.on('reconnecting', () => {
 client.on('ready', async () => {
 	client.user!.setActivity(config.prefix + 'help', { type: 'PLAYING' });
 
+	const permissions = [
+		Permissions.FLAGS.VIEW_CHANNEL,
+		Permissions.FLAGS.SEND_MESSAGES,
+		Permissions.FLAGS.MANAGE_MESSAGES,
+		Permissions.FLAGS.EMBED_LINKS,
+		Permissions.FLAGS.ATTACH_FILES,
+		Permissions.FLAGS.MENTION_EVERYONE,
+		Permissions.FLAGS.ADD_REACTIONS,
+	];
+	//
+	const qs: Record<string, string> = {
+		client_id: config.applicationId,
+		permissions: permissions
+			.reduce((all, perm) => all + perm, 0)
+			.toString(),
+		scope: ['bot', 'applications.commands'].join(' '),
+	};
+	const banner = 'Discord Bot Authorization URL';
+	const authLink = `https://discord.com/api/oauth2/authorize?${Object.keys(
+		qs
+	)
+		.map(
+			(key) => `${encodeURIComponent(key)}=${encodeURIComponent(qs[key])}`
+		)
+		.join('&')}`;
+
+	console.log('-'.repeat(authLink.length));
+	console.log(banner);
+	console.log(authLink);
+	console.log('-'.repeat(authLink.length));
+
 	const bannedRows = await query<BanRow[]>(`SELECT * FROM banned`); // refreshes the list of banned users on startup
 	bannedRows.forEach((bannedId) => {
 		if (bannedId.userId !== undefined && bannedId.userId !== null) {
@@ -90,6 +123,7 @@ client.on('ready', async () => {
 import wishlistCommand from './commands/setwishlist';
 import addressCommand from './commands/address';
 import leaveCommand from './commands/leave';
+import logger from './utils/logger';
 
 client.on(
 	'messageReactionAdd',
@@ -106,37 +140,48 @@ client.on(
 		// no exchange associated with message
 		if (!exchange) return;
 		// exchange already started
-		else if (exchange.started === 1) return;
+		else if (exchange.started === 1) {
+			return user.send(
+				`This Secret Santa exchange has already started and we are no longer taking new signups!  Thank you for your interest. Keep an eye out for our next gift exchange.`
+			);
+		}
 
 		let row = (
-			await query<UserRow[]>(
-				`SELECT * FROM users WHERE userId = ${user.id}`
-			)
+			await query<UserRow[]>(`SELECT * FROM users WHERE userId = ?`, [
+				user.id,
+			])
 		)[0];
 
 		if (!row) {
 			let methods = new Methods();
 			await methods.createNewUser(user.id);
 			row = (
-				await query<UserRow[]>(
-					`SELECT * FROM users WHERE userId = ${user.id}`
-				)
+				await query<UserRow[]>(`SELECT * FROM users WHERE userId = ?`, [
+					user.id,
+				])
 			)[0];
 		}
 
 		if (row.exchangeId === 0) {
-			await query(
-				`UPDATE users SET exchangeId = ${exchangeId} WHERE userId = ${user.id}`
+			await query(`UPDATE users SET exchangeId = ? WHERE userId = ?`, [
+				exchangeId,
+				user.id,
+			]);
+
+			const creator = await reaction.message.client.users.fetch(
+				exchange.creatorId.toString()
 			);
+			const admins = await Promise.all(
+				config.adminUsers.map((admin) => client.users.fetch(admin))
+			).then((users) => users.map((user) => user.toString()).join(', '));
 
 			let messageSections = {
-				[`**Welcome to <@${exchange.creatorId}>'s Secret Santa Exchange**`]:
-					[
-						'I will let you know when names are drawn!',
-						'Before names are drawn, you need to set your profile and your address.',
-						'If you do not set your profile and address, you will not be selected for the exchange.',
-						'Names should be drawn by 2021-11-30 at 9:00 PM EST.',
-					],
+				[`**Welcome to ${creator.toString()}'s Secret Santa Exchange**`]: [
+					'I will let you know when names are drawn!',
+					'Before names are drawn, you need to set your profile and your address.',
+					'If you do not set your profile and address, you will not be selected for the exchange.',
+					// 'Names should be drawn by 2021-11-30 at 9:00 PM EST.',
+				],
 				'**1. Create Your Profile**': [
 					`Before we can match you to another participant, you need to submit your profile.`,
 					`Your profile will be provided to your Secret Santa so they can send you a gift you'll like.`,
@@ -159,7 +204,7 @@ client.on(
 				'**2. Set Your Address**': [
 					`You need to provide a shipping address to participate in Secret Santa.`,
 					'If you provide your physical address, your Santa will see the complete address.',
-					'Use a work address or a PO Box if you do not want your real address to be shared',
+					'Use a work address or a PO Box if you do not want your real address to be shared.',
 					`Please make sure your address contains your country.`,
 					`Due to pandemic embargoes, some countries are not accepting mail from other countries.`,
 					`**To set your address, reply to me...**\n\`${config.prefix}${addressCommand.name} <your address>\``,
@@ -167,15 +212,13 @@ client.on(
 				'*For example, to set your address, you could reply...*': [
 					[
 						'```',
-						`${config.prefix}${addressCommand.name} Firstname Lastname; c/o @${user.username}; 1600 Pennsylvania Avenue, N.W; Washington, DC 20500; USA`,
+						`${config.prefix}${addressCommand.name} ${user.username}; 1600 Pennsylvania Avenue, N.W; Washington, DC 20500; USA`,
 						'```',
 					].join('\n'),
 				],
 				'**Leaving/Quitting The Exchange**': [
 					`If you are unable to participate in the exchange, you can leave any time before names are matched by replying here with \`${config.prefix}${leaveCommand.name}\`.`,
-					`If you need to leave the Secret Santa exchange *after* names are drawn, please contact one of the admins listed here: ${config.adminUsers
-						.map((userId) => `<@${userId}>`)
-						.join(', ')}`,
+					`If you need to leave the Secret Santa exchange *after* names are drawn, please contact one of the admins listed here: ${admins}`,
 				],
 			};
 
@@ -188,7 +231,22 @@ client.on(
 
 			const recipient = await client.users.fetch(user.id);
 
-			recipient.send({ content: messageString });
+			recipient
+				.send({ content: messageString })
+				.then((message) =>
+					logger.info(
+						`[app] welcome message ${message.id} sent to ${recipient.tag} (${recipient.id}) `
+					)
+				)
+				.catch((uhoh) => {
+					query<never>(`DELETE * FROM users WHERE userId = ?`, [
+						recipient.id,
+					]);
+					logger.error(
+						`[app] unable to send welcome message to ${recipient.toString()}; removing from exchange`,
+						{ uhoh }
+					);
+				});
 		}
 	}
 );

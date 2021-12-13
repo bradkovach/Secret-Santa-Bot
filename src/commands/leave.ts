@@ -2,6 +2,7 @@ import { Message } from 'discord.js';
 import { ICommand } from '../ICommand';
 import { query } from '../mysql';
 import { UserRow } from '../rows/UserRow';
+import logger from '../utils/logger';
 
 const command: ICommand = {
 	name: 'leave',
@@ -17,7 +18,8 @@ const command: ICommand = {
 
 	async execute(message: Message, args: string[], prefix: string) {
 		const users = await query<UserRow[]>(
-			`SELECT * from users WHERE userId = ${message.author.id}`
+			`SELECT * from users WHERE userId = ?`,
+			[message.author.id]
 		);
 		if (users && users[0]) {
 			const user = users[0];
@@ -27,10 +29,14 @@ const command: ICommand = {
 				);
 			} else {
 				await query<never>(
-					`DELETE FROM users WHERE partnerId = '' AND userId = ${message.author.id}`
+					`DELETE FROM users WHERE partnerId = '' AND userId = ?`,
+					[message.author.id]
 				);
 				message.reply(
 					`You are no longer participating in this Secret Santa exchange! To rejoin, just unreact and react to the announcement post.`
+				);
+				logger.info(
+					`[leave] ${message.author.tag} (${message.author.id}) has left the Secret Santa Exchange, ${user.exchangeId}`
 				);
 			}
 		}

@@ -3,19 +3,20 @@
 	"version": "1.0.0",
 	"description": "Start a secret santa with your friends using Discord!",
 	"main": "app.js",
-	"scripts": {
-		"test": "echo \"Error: no test specified\" && exit 1"
-	},
+	"scripts": {},
 	"author": "blobfysh",
 	"license": "MIT",
 	"dependencies": {
 		"discord.js": "^12.4.1",
 		"dotenv": "^10.0.0",
-		"mysql": "^2.17.1"
+		"mysql": "^2.17.1",
+		"mysql2": "^2.3.3",
+		"winston": "^3.3.3"
 	},
 	"devDependencies": {
 		"@types/mysql": "^2.15.19",
 		"@types/node": "^16.11.8",
+		"axios": "^0.24.0",
 		"prettier": "^2.4.1",
 		"typescript": "^4.5.2"
 	},

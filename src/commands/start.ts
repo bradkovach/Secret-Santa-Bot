@@ -3,6 +3,7 @@ import { ICommand } from '../ICommand';
 import { query } from '../mysql';
 import { ExchangeRow } from '../rows/ExchangeRow';
 import { UserRow } from '../rows/UserRow';
+import logger from '../utils/logger';
 import { pickRandom } from '../utils/pickRandom';
 
 const config = require('../config.json');
@@ -21,20 +22,26 @@ const command: ICommand = {
 
 	async execute(message: Message, args: string[], prefix: string) {
 		const row = (
-			await query<UserRow[]>(
-				`SELECT * FROM users WHERE userId = ${message.author.id}`
-			)
+			await query<UserRow[]>(`SELECT * FROM users WHERE userId = ?`, [
+				message.author.id,
+			])
 		)[0];
 		const exchangeRow = (
-			await query<(UserRow & ExchangeRow)[]>(`SELECT * 
+			await query<(UserRow & ExchangeRow)[]>(
+				`SELECT * 
         FROM users 
         INNER JOIN exchange ON users.exchangeId = exchange.exchangeId 
-        WHERE userId = ${message.author.id}`)
+        WHERE userId = ?`,
+				[message.author.id]
+			)
 		)[0];
 
-		if (row.exchangeId == 0)
+		if (row.exchangeId == 0) {
 			return message.reply("You aren't in a Secret Santa.");
-		else if (!exchangeRow || exchangeRow.userId !== exchangeRow.creatorId)
+		} else if (
+			!exchangeRow ||
+			exchangeRow.userId !== exchangeRow.creatorId
+		) {
 			return message.reply(
 				"You can't start a Secret Santa that you didn't create.\n\nAsk `" +
 					(
@@ -44,19 +51,26 @@ const command: ICommand = {
 					).tag +
 					'` to start it.'
 			);
-		else if (exchangeRow.started == 1)
+		} else if (exchangeRow.started == 1) {
 			return message.reply('The Secret Santa has already started!');
+		}
 
-		await query(
-			`UPDATE exchange SET started = 1 WHERE exchangeId = ${exchangeRow.exchangeId}`
-		);
+		await query(`UPDATE exchange SET started = 1 WHERE exchangeId = ?`, [
+			exchangeRow.exchangeId,
+		]);
 		const botMsg = await message.reply(
 			'Shuffling participants and messaging...'
 		);
 
 		await pickRandom(message, exchangeRow.exchangeId, prefix);
 
-		botMsg.edit('Successfully started your Secret Santa!');
+		botMsg
+			.edit('Successfully started your Secret Santa!')
+			.then((newMessage) =>
+				logger.info(
+					`[start] Secret Santa exchange started by ${message.author.tag} (${message.author.id}).`
+				)
+			);
 	},
 };
 

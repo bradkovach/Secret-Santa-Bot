@@ -3,12 +3,10 @@ import { EmbedFieldData } from 'discord.js';
 import { Message } from 'discord.js';
 import { ICommand } from '../ICommand';
 
-const Discord = require('discord.js');
-const { query } = require('../mysql');
-const config = require('../config.json');
-const methods = require('../utils/methods');
+import Discord from 'discord.js';
+import config from '../config.json';
 
-function code (subject: string) {
+function code(subject: string) {
 	return `\`${subject}\``;
 }
 
@@ -25,12 +23,16 @@ const command: ICommand = {
 	adminOnly: false,
 
 	async execute(message: Message, args: string[], prefix: string) {
+		// Show all commands
 		if (args[0] == undefined) {
 			var helpArr: EmbedFieldData[] = message.client.commands
 				.filter((cmd) => !cmd.adminOnly && cmd.name !== 'help')
-				.map(
-					(cmd) => ({ name: cmd.name == cmd.usage ? code(cmd.name) : code(cmd.usage), value: `${cmd.forceDMsOnly ? '**DM Only** ' : ''}${cmd.description}`})
-				);
+				.map((cmd) => ({
+					name: cmd.name == cmd.usage ? code(cmd.name) : code(cmd.usage),
+					value: `${cmd.forceDMsOnly ? '**DM Only** ' : ''}${
+						cmd.description
+					}`,
+				}));
 
 			const helpEmbed = new MessageEmbed()
 				.setTitle('__Commands__')
@@ -80,7 +82,8 @@ const command: ICommand = {
 							command.name.slice(1)) +
 						' Command__'
 				)
-				.setDescription(embedDesc.map((cmd) => '- ' + cmd).join('\n\n'))
+				.addField('Usage', code(prefix + command.usage))
+				.setDescription(embedDesc.map((cmd) => '- ' + cmd).join('\n'))
 				.setColor(config.embeds_color);
 
 			if (command.aliases[0].length)

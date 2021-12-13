@@ -5,6 +5,7 @@ const { query } = require('../mysql');
 const config = require('../config.json');
 import { Methods } from '../utils/methods';
 import { addNewExchange } from '../utils/addNewExchange';
+import logger from '../utils/logger';
 
 const command: ICommand = {
 	name: 'create',
@@ -55,6 +56,10 @@ const command: ICommand = {
 			`UPDATE users SET exchangeId = ${botMessage.id} WHERE userId = ${message.author.id}`
 		);
 		await addNewExchange(botMessage.id, message.author.id);
+
+		logger.info(
+			`Created new Secret Santa exchange, started by ${message.author.tag} (${message.author.id}) with message ${message.id}.`
+		);
 	},
 } as ICommand;
 

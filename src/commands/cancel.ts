@@ -3,6 +3,7 @@ import { ICommand } from '../ICommand';
 import { query } from '../mysql';
 import { ExchangeRow } from '../rows/ExchangeRow';
 import { UserRow } from '../rows/UserRow';
+import logger from '../utils/logger';
 
 const command: ICommand = {
 	name: 'cancel',
@@ -22,21 +23,26 @@ const command: ICommand = {
 		args: string[],
 		prefix: string
 	): Promise<Message | undefined> {
-		console.log('execute() cancel command');
-		const row = (
-			await query<UserRow[]>(
-				`SELECT * FROM users WHERE userId = ${message.author.id}`
-			)
+		const userRow = (
+			await query<UserRow[]>(`SELECT * FROM users WHERE userId = ?`, [
+				message.author.id,
+			])
 		)[0];
 		const exchangeRow = (
 			await query<(UserRow & ExchangeRow)[]>(
-				`SELECT * FROM users INNER JOIN exchange ON users.exchangeId = exchange.exchangeId WHERE userId = ${message.author.id}`
+				`SELECT * 
+				FROM users INNER JOIN exchange ON users.exchangeId = exchange.exchangeId 
+				WHERE userId = ?`,
+				[message.author.id]
 			)
 		)[0];
 
-		if (row.exchangeId == 0)
+		if (userRow.exchangeId == 0) {
 			return message.reply("You aren't in a Secret Santa.");
-		else if (!exchangeRow || exchangeRow.userId !== exchangeRow.creatorId)
+		} else if (
+			!exchangeRow ||
+			exchangeRow.userId !== exchangeRow.creatorId
+		) {
 			return message.reply(
 				"You can't cancel a Secret Santa that you didn't create.\n\nAsk `" +
 					(
@@ -46,17 +52,23 @@ const command: ICommand = {
 					).tag +
 					'` to cancel it.'
 			);
+		}
 
+		await query<never>(`DELETE FROM exchange WHERE exchangeId = ?`, [
+			exchangeRow.exchangeId,
+		]);
 		await query<never>(
-			`DELETE FROM exchange WHERE exchangeId = ${exchangeRow.exchangeId}`
+			`UPDATE users SET partnerId = 0 WHERE exchangeId = ?`,
+			[exchangeRow.exchangeId]
 		);
 		await query<never>(
-			`UPDATE users SET partnerId = 0 WHERE exchangeId = ${exchangeRow.exchangeId}`
-		);
-		await query<never>(
-			`UPDATE users SET exchangeId = 0 WHERE exchangeId = ${exchangeRow.exchangeId}`
+			`UPDATE users SET exchangeId = 0 WHERE exchangeId = ?`,
+			[exchangeRow.exchangeId]
 		);
 		message.reply('Successfully cancelled your Secret Santa.');
+		logger.info(
+			`Cancelled Secret Santa exchange ${exchangeRow.exchangeId}`
+		);
 	},
 };
 

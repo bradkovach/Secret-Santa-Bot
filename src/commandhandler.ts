@@ -23,19 +23,19 @@ export const handleCmd = async (message: Message, prefix: string) => {
 	if (message.channel.type !== 'dm') await cacheMembers(message);
 	if (
 		(
-			await query<UserRow[]>(
-				`SELECT * FROM users WHERE userId = ${message.author.id}`
-			)
-		).length ===0
+			await query<UserRow[]>(`SELECT * FROM users WHERE userId = ?`, [
+				message.author.id,
+			])
+		).length === 0
 	) {
 		let methods = new Methods();
 		await methods.createNewUser(message.author.id); // Create new account in database for user BEFORE executing a command.
 	}
 
 	const row = (
-		await query<UserRow[]>(
-			`SELECT * FROM users WHERE userId = ${message.author.id}`
-		)
+		await query<UserRow[]>(`SELECT * FROM users WHERE userId = ?`, [
+			message.author.id,
+		])
 	)[0];
 
 	if (command.requirePartner && row.partnerId == 0)
