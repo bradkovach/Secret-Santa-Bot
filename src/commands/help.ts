@@ -1,7 +1,7 @@
 import { MessageEmbed } from 'discord.js';
 import { EmbedFieldData } from 'discord.js';
 import { Message } from 'discord.js';
-import { ICommand } from '../ICommand';
+import type { ICommand } from '../ICommand';
 
 import Discord from 'discord.js';
 import config from '../config.json';
@@ -13,7 +13,7 @@ function code(subject: string) {
 const command: ICommand = {
 	name: 'help',
 	aliases: [''],
-	usage: '',
+	usage: 'help',
 	description: 'Shows all bot commands.',
 	hasArgs: false,
 	requirePartner: false,
@@ -50,30 +50,39 @@ const command: ICommand = {
 					(cmd: ICommand) => cmd.aliases && cmd.aliases.includes(args[0])
 				);
 
-			if (!command) return message.reply("That command doesn't exist.");
+			if (!command) {
+				return message.reply("That command doesn't exist.");
+			}
 
 			var embedDesc = [command.description];
 
-			if (command.worksInDM) embedDesc.push('This command works in DMs');
+			if (command.worksInDM) {
+				embedDesc.push('This command works in DMs');
+			}
 
-			if (command.forceDMsOnly)
+			if (command.forceDMsOnly) {
 				embedDesc.push('This command only works in DMs');
+			}
 
-			if (command.adminOnly)
+			if (command.adminOnly) {
 				embedDesc.push('This command can only be used by bot admins.');
+			}
 
-			if (command.hasArgs)
+			if (command.hasArgs) {
 				embedDesc.push('This command requires arguments.');
+			}
 
-			if (command.requirePartner)
+			if (command.requirePartner) {
 				embedDesc.push(
 					'This command requires that you already have a Secret Santa partner.'
 				);
+			}
 
-			if (command.modOnly)
+			if (command.modOnly) {
 				embedDesc.push(
 					'This command requires that you have the `MANAGE_SERVER` permission.'
 				);
+			}
 
 			const cmdEmbed = new Discord.MessageEmbed()
 				.setTitle(
@@ -86,8 +95,9 @@ const command: ICommand = {
 				.setDescription(embedDesc.map((cmd) => '- ' + cmd).join('\n'))
 				.setColor(config.embeds_color);
 
-			if (command.aliases[0].length)
+			if (command.aliases[0].length) {
 				cmdEmbed.addField('Aliases', command.aliases);
+			}
 
 			message.channel.send(cmdEmbed);
 		}

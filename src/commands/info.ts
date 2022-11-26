@@ -1,5 +1,5 @@
 import { Message } from 'discord.js';
-import { ICommand } from '../ICommand';
+import type { ICommand } from '../ICommand';
 
 const Discord = require('discord.js');
 const { version } = require('../../package.json');

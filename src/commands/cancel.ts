@@ -1,5 +1,5 @@
 import { Message } from 'discord.js';
-import { ICommand } from '../ICommand';
+import type { ICommand } from '../ICommand';
 import { query } from '../mysql';
 import { ExchangeRow } from '../rows/ExchangeRow';
 import { UserRow } from '../rows/UserRow';

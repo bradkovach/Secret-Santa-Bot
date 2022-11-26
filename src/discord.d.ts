@@ -1,4 +1,4 @@
-import { ICommand } from './ICommand';
+import type { ICommand } from './ICommand';
 
 declare module 'discord.js' {
 	export interface Client {

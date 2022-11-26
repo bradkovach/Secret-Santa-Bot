@@ -1,8 +1,9 @@
 import { Message, MessageEmbed } from 'discord.js';
-import { ICommand } from '../ICommand';
+import type { ICommand } from '../ICommand';
 import { query } from '../mysql';
 import { UserRow } from '../rows/UserRow';
 import { getUserById } from '../sql/queries';
+import { logUser as u } from '../utils/discord';
 import logger from '../utils/logger';
 
 import addressCommand from './address';
@@ -57,14 +58,14 @@ const command: ICommand = {
 						`Hello, ${message.author.username}!`,
 						'',
 						userRow.wishlist.trim() === '' || userRow.address.trim() === ''
-							? '**At this time, you will not be selected for matching.**  Please submit your address and profile before December 4 at 7:00 PM EST!'
+							? '**At this time, you will not be selected for matching.**  Please submit your address and profile before matching!'
 							: `You're all set for matching.  You will get a DM from this bot when gift assignments are made!`,
 					].join('\n'),
 					embed,
 				})
 				.then((replyMessage) =>
 					logger.info(
-						`[status] Sent status message to ${message.author.tag} (${message.author.id})`
+						`[status] Sent status message to ${u(message.author)}`
 					)
 				);
 		}

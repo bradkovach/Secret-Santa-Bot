@@ -1,11 +1,12 @@
 import * as Discord from 'discord.js';
 import { MessageEmbed } from 'discord.js';
-import { ICommand } from '../ICommand';
+import type { ICommand } from '../ICommand';
 const { query } = require('../mysql');
 const config = require('../config.json');
 import { Methods } from '../utils/methods';
 import { addNewExchange } from '../utils/addNewExchange';
 import logger from '../utils/logger';
+import { logUser as u } from '../utils/discord';
 
 const command: ICommand = {
 	name: 'create',
@@ -27,10 +28,11 @@ const command: ICommand = {
 			)
 		)[0];
 
-		if (row.exchangeId !== 0)
+		if (row.exchangeId !== 0) {
 			return message.reply(
 				'You are already in a Secret Santa! Ask the creator of the secret santa to cancel it before making a new one.'
 			);
+		}
 
 		const embed = new MessageEmbed()
 			.setTitle(
@@ -58,7 +60,9 @@ const command: ICommand = {
 		await addNewExchange(botMessage.id, message.author.id);
 
 		logger.info(
-			`Created new Secret Santa exchange, started by ${message.author.tag} (${message.author.id}) with message ${message.id}.`
+			`Created new Secret Santa exchange, started by ${u(
+				message.author
+			)} with message ${message.id}.`
 		);
 	},
 } as ICommand;

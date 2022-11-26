@@ -34,28 +34,35 @@ export const createExchangeSQL = sqlQueries.tables.exchange;
 export const createBannedSQL = sqlQueries.tables.banned;
 
 db.connect((err: any) => {
-	if (err)
+	if (err) {
 		return console.log(
 			'[MYSQL] Could not connect to SQL database: ' +
 				err +
 				'\n\n\nYou probably need to create the secret_santa database, open "MYSQL Command Line Client" using windows search and run: CREATE DATABASE IF NOT EXISTS secret_santa;\n\n\n'
 		);
+	}
 
 	console.log('[MYSQL] MySQL Connected.');
 
 	// Create banned users table
 	db!.query(createBannedSQL, (err: any, result: any) => {
-		if (err) return console.log(err);
+		if (err) {
+			return console.log(err);
+		}
 	});
 
 	// Create exchange table
 	db!.query(createExchangeSQL, (err: any, result: any) => {
-		if (err) return console.log(err);
+		if (err) {
+			return console.log(err);
+		}
 	});
 
 	// Create users table
 	db!.query(createUsersSQL, (err: any, result) => {
-		if (err) return console.log(err);
+		if (err) {
+			return console.log(err);
+		}
 	});
 });
 
@@ -71,7 +78,9 @@ db.on('error', (err: { fatal: any }) => {
 export function query<RowType>(sql: any, args?: any): Promise<RowType> {
 	return new Promise((resolve, reject) => {
 		db!.query(sql, args, (err: any, rows: unknown) => {
-			if (err) return reject(err);
+			if (err) {
+				return reject(err);
+			}
 
 			resolve(rows as RowType);
 		});

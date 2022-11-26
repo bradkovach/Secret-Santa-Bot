@@ -13,6 +13,14 @@ npx tsc
 node dist/index.js
 ```
 
+# New commands
+
+A number of added commands have been added to make this bot suitable for larger, colocated teams, such as `leave`, `address`, `shipped`, `received`.  Configuration is now managed with a .env file.
+
+An additional message mode is added for users in the 'adminList', `message all [message]`.
+
+Anti-abuse logging is added via Winston.
+
 <p align="center">
   <img width="120" height="120" src="https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/120/microsoft/209/father-christmas_1f385.png">
 </p>
@@ -28,10 +36,10 @@ node dist/index.js
 |     `help`     | View all the command, you can also specify a command to get more information. |              `s!help [command]`               |
 |    `create`    |                Create a new Secret Santa for everyone to join.                |                  `s!create`                   |
 |    `start`     |      Assigns everyone a random partner (use this after you've created).       |                   `s!start`                   |
-| `setwishlist`  |                          Edit your gift preferences.                          |      `s!setwishlist <preferences here>`       |
-| `partnerinfo`  |                     View your partners gift preferences.                      |                `s!partnerinfo`                |
+| `profile`  |                          Edit your gift preferences.                          |      `s!setwishlist <preferences here>`       |
+| `partner`  |                     View your partners gift preferences.                      |                `s!partnerinfo`                |
 | `participants` |           Show a list of who's participating in your Secret Santa.            |               `s!participants`                |
-|   `message`    |      Message your secret gifter or giftee, the bot will hide your name.       | `s!message <gifter/giftee> <message to send>` |
+|   `message`    |      Message your secret gifter or giftee, the bot will hide your name.       | `s!message <santa/giftee> <message to send>` |
 |    `cancel`    |                          Cancels your Secret Santa.                           |                  `s!cancel`                   |
 |     `info`     |        View information about the bot like memory usage, server count.        |                   `s!info`                    |
 

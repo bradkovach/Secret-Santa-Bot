@@ -1,8 +1,9 @@
 import { Message } from 'discord.js';
-import { ICommand } from '../ICommand';
+import type { ICommand } from '../ICommand';
 import { query } from '../mysql';
 import { UserRow } from '../rows/UserRow';
 import { getUserById } from '../sql/queries';
+import { logUser as u } from '../utils/discord';
 import logger from '../utils/logger';
 
 const command: ICommand = {
@@ -34,7 +35,9 @@ const command: ICommand = {
 					`You are no longer participating in this Secret Santa exchange! To rejoin, just unreact and react to the announcement post.`
 				);
 				logger.info(
-					`[leave] ${message.author.tag} (${message.author.id}) has left the Secret Santa Exchange, ${user.exchangeId}`
+					`[leave] ${u(
+						message.author
+					)} has left the Secret Santa Exchange, ${user.exchangeId}`
 				);
 			}
 		}

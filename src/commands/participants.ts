@@ -1,5 +1,5 @@
 import { Message } from 'discord.js';
-import { ICommand } from '../ICommand';
+import type { ICommand } from '../ICommand';
 
 const Discord = require('discord.js');
 const { query } = require('../mysql');
@@ -33,8 +33,9 @@ const command: ICommand = {
 			)
 		)[0];
 
-		if (row.exchangeId == 0)
+		if (row.exchangeId == 0) {
 			return message.reply("You aren't in a Secret Santa.");
+		}
 
 		var userTags = [];
 

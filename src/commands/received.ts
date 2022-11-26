@@ -2,8 +2,9 @@ import { Message } from 'discord.js';
 import { query } from '../mysql';
 import { UserRow } from '../rows/UserRow';
 import config from '../config.json';
-import { ICommand } from '../ICommand';
+import type { ICommand } from '../ICommand';
 import logger from '../utils/logger';
+import { logUser as u } from '../utils/discord';
 
 const command: ICommand = {
 	name: 'received',
@@ -74,7 +75,7 @@ const command: ICommand = {
 				.send(
 					[
 						`Your gift has been marked as received and your Secret Santa has been notified!`,
-						`Your secret santa was ${santa.toString()}.`,
+						`Your secret santa was ${santa.tag}.`,
 					].join(' ')
 				)
 				.then((message) =>
@@ -86,7 +87,9 @@ const command: ICommand = {
 				),
 		]).then((allSent) =>
 			logger.info(
-				`[received] Giftee ${giftee.tag} (${giftee.id}) has received their gift from ${santa.tag} (${santa.id}).`
+				`[received] Giftee ${u(giftee)} has received their gift from ${u(
+					santa
+				)}.`
 			)
 		);
 	},

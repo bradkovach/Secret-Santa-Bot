@@ -14,8 +14,11 @@ database.with(async (conn) => {
 	const pQuery = (query: string, args: any[]) =>
 		new Promise((resolve, reject) => {
 			conn.query(query, args, (error, result) => {
-				if (error) return reject(error);
-				else return resolve(result);
+				if (error) {
+					return reject(error);
+				} else {
+					return resolve(result);
+				}
 			});
 		});
 	const userCreateStatement = (await pQuery(

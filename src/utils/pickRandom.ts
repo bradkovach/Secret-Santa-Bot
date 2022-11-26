@@ -8,6 +8,7 @@ import shippedCommand from '../commands/shipped';
 import { shuffle } from './shuffle';
 import logger from './logger';
 import { count } from 'console';
+import { logUser } from './discord';
 
 export function groupBy<K, V>(
 	list: Array<V>,
@@ -99,7 +100,9 @@ export async function pickRandom(
 					.send(startEmbed)
 					.then((newMessage) =>
 						logger.info(
-							`[utils/pickRandom] ${santaUser.tag} (${santaUser.id}) chosen to be Secret Santa for ${gifteeUser.tag} (${gifteeUser.id})`
+							`[utils/pickRandom] ${logUser(
+								santaUser
+							)} chosen to be Secret Santa for ${logUser(gifteeUser)}`
 						)
 					);
 			} catch (err) {

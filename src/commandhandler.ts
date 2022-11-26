@@ -1,8 +1,11 @@
 import { Message } from 'discord.js';
-import { ICommand } from './ICommand';
+import type { ICommand } from './ICommand';
 import { query } from './mysql';
 import { UserRow } from './rows/UserRow';
+import { logUser } from './utils/discord';
+import {messageLogger} from './utils/logger';
 import { Methods } from './utils/methods';
+import helpCommand from './commands/help'
 
 export const handleCmd = async (message: Message, prefix: string) => {
 	const args = message.content.slice(prefix.length).split(/ +/);
@@ -13,14 +16,24 @@ export const handleCmd = async (message: Message, prefix: string) => {
 			(cmd: ICommand) => cmd.aliases && cmd.aliases.includes(commandName)
 		);
 
-	if (!command) return;
-	// Command doesnt exist
-	else if (!command.worksInDM && message.channel.type !== 'text')
-		return message.reply("That command doesn't work in DMs!");
-	else if (command.forceDMsOnly && message.channel.type !== 'dm')
-		return message.reply('That command only works in DMs!');
+	if (!command) {
+		if( message.channel.type === 'dm'  ) {
 
-	if (message.channel.type !== 'dm') await cacheMembers(message);
+			return message.reply(`Sorry, I was unable to understand what you are trying to do.  Send \`${prefix}${helpCommand.usage}\` for more assistance.`)
+		} else {
+			return;
+		}
+	}
+	// Command doesnt exist
+	else if (!command.worksInDM && message.channel.type !== 'text') {
+		return message.reply("That command doesn't work in DMs!");
+	} else if (command.forceDMsOnly && message.channel.type !== 'dm') {
+		return message.reply('That command only works in DMs!');
+	}
+
+	if (message.channel.type !== 'dm') {
+		await cacheMembers(message);
+	}
 	if (
 		(
 			await query<UserRow[]>(`SELECT * FROM users WHERE userId = ?`, [
@@ -38,24 +51,25 @@ export const handleCmd = async (message: Message, prefix: string) => {
 		])
 	)[0];
 
-	if (command.requirePartner && row.partnerId == 0)
+	if (command.requirePartner && row.partnerId == 0) {
 		return message.reply(
 			"A partner has not been chosen for you yet! Try again after you've been given a partner."
 		);
-	else if (
+	} else if (
 		command.modOnly &&
 		!message.member!.hasPermission('MANAGE_GUILD')
-	)
+	) {
 		return message.reply(
 			'You need the `MANAGE_SERVER` permission to run that command.'
 		);
-	else if (
+	} else if (
 		command.adminOnly &&
 		!message.client.sets.adminUsers.has(message.author.id)
-	)
+	) {
 		return message.reply(
 			'You must be an admin of the bot to run that command.'
 		);
+	}
 
 	try {
 		command.execute(message, args, prefix); // CALL COMMAND HERE

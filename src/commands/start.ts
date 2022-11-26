@@ -1,9 +1,10 @@
 import { Message } from 'discord.js';
-import { ICommand } from '../ICommand';
+import type { ICommand } from '../ICommand';
 import { query } from '../mysql';
 import { ExchangeRow } from '../rows/ExchangeRow';
 import { UserRow } from '../rows/UserRow';
 import { getUserById } from '../sql/queries';
+import { logUser as u } from '../utils/discord';
 import logger from '../utils/logger';
 import { pickRandom } from '../utils/pickRandom';
 
@@ -67,7 +68,7 @@ const command: ICommand = {
 			.edit('Successfully started your Secret Santa!')
 			.then((newMessage) =>
 				logger.info(
-					`[start] Secret Santa exchange started by ${message.author.tag} (${message.author.id}).`
+					`[start] Secret Santa exchange started by ${u(message.author)}.`
 				)
 			);
 	},

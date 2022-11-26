@@ -1,5 +1,5 @@
 import { Message } from 'discord.js';
-import { ICommand } from '../ICommand';
+import type { ICommand } from '../ICommand';
 import { getAttachments } from '../utils/getAttachments';
 import logger from '../utils/logger';
 
@@ -9,6 +9,7 @@ import config from '../config.json';
 import { UserRow } from '../rows/UserRow';
 import { ExchangeRow } from '../rows/ExchangeRow';
 import { getUserById } from '../sql/queries';
+import { logUser as u } from '../utils/discord';
 
 const command: ICommand = {
 	name: 'message',
@@ -40,16 +41,17 @@ const command: ICommand = {
 			`santa - the person gifting you (secret).`,
 		].join('\n');
 
-		if (userRow.exchangeId == 0)
+		if (userRow.exchangeId == 0) {
 			return message.reply("You aren't in a Secret Santa.");
-		else if (!args.length) return message.reply(usageMessage);
-		else if (
+		} else if (!args.length) {
+			return message.reply(usageMessage);
+		} else if (
 			recipient !== 'giftee' &&
 			recipient !== 'santa' &&
 			recipient !== 'all'
-		)
+		) {
 			return message.reply(usageMessage);
-		else if (recipient == 'giftee') {
+		} else if (recipient == 'giftee') {
 			const content = args.slice(1).join(' ');
 			const gifteeEmbed = new Discord.MessageEmbed()
 				.setTitle(
@@ -72,7 +74,11 @@ const command: ICommand = {
 					.send(getAttachments(message, gifteeEmbed))
 					.then((newMessage) =>
 						logger.info(
-							`[message] Santa ${message.author.tag} (${message.author.id}) sent a message to giftee @${giftee.tag} (${giftee.id}). m${newMessage.id}: '${content}'`
+							`[message] Santa ${u(
+								message.author
+							)} sent a message to giftee @${u(giftee)}. m${
+								newMessage.id
+							}: '${content}'`
 						)
 					);
 
@@ -81,6 +87,11 @@ const command: ICommand = {
 						giftee.toString()
 				);
 			} catch (err) {
+				logger.error(
+					`[message] Error sending message from Santa [${u(
+						message.author
+					)}] to Giftee ${userRow.partnerId}: ${err}`
+				);
 				message.reply('Error sending message: ```' + err + '```');
 			}
 		} else if (recipient == 'santa') {
@@ -106,13 +117,18 @@ const command: ICommand = {
 					.send(getAttachments(message, santaEmbed))
 					.then((newMessage) =>
 						logger.info(
-							`[message] Giftee @${message.author.tag} (${message.author.id}) sent a message (${newMessage.id}) to Santa @${santa.tag} (${santa.id}): '${content}'`
+							`[message] Giftee ${u(message.author)} sent a message (${
+								newMessage.id
+							}) to Santa ${u(santa)}: '${content}'`
 						)
 					);
 
 				message.reply('Successfully sent message to your Secret Santa!');
 			} catch (err) {
 				message.reply('Error sending message: ```' + err + '```');
+				logger.error(
+					`[message] Error sending message from Giftee ${message.author} to Santa ${santaRow.userId}: ${err}`
+				);
 			}
 		} else if (
 			recipient === 'all' &&
@@ -139,11 +155,13 @@ const command: ICommand = {
 					return user.send(embed).then(
 						(success) =>
 							logger.info(
-								`[message][all] Admin message sent to ${user.tag} (${participantRow.userId}).`
+								`[message][all] Admin message sent to ${u(user)}.`
 							),
 						(error) =>
 							logger.error(
-								`[message][all] Unable to send admin message to ${user.tag} (${participantRow.userId}).`
+								`[message][all] Unable to send admin message to ${u(
+									user
+								)}).`
 							)
 					);
 				})

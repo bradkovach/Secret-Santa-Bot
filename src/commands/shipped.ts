@@ -3,9 +3,10 @@ import { query } from '../mysql';
 import { UserRow } from '../rows/UserRow';
 import config from '../config.json';
 import receivedCommand from './received';
-import { ICommand } from '../ICommand';
+import type { ICommand } from '../ICommand';
 import logger from '../utils/logger';
 import { getUserById } from '../sql/queries';
+import { logUser as u } from '../utils/discord';
 
 const command: ICommand = {
 	name: 'shipped',
@@ -97,7 +98,9 @@ const command: ICommand = {
 				);
 			} else {
 				logger.info(
-					`[shipped] ${santa.tag} (${santa.id}) shipped their gift to ${giftee.tag} (${giftee.id}) with tracking number ${trackingNumber}.`
+					`[shipped] ${u(santa)} shipped their gift to ${u(
+						giftee
+					)} with tracking number ${trackingNumber}.`
 				);
 			}
 

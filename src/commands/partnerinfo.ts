@@ -1,6 +1,6 @@
 import { MessageEmbed } from 'discord.js';
 import { Message } from 'discord.js';
-import { ICommand } from '../ICommand';
+import type { ICommand } from '../ICommand';
 import { query } from '../mysql';
 import { UserRow } from '../rows/UserRow';
 import { getUserById } from '../sql/queries';

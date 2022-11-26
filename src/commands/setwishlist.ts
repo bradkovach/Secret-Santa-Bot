@@ -1,10 +1,11 @@
 import { MessageEmbed } from 'discord.js';
 import { Message } from 'discord.js';
-import { ICommand } from '../ICommand';
+import type { ICommand } from '../ICommand';
 import { query } from '../mysql';
 import { ExchangeRow } from '../rows/ExchangeRow';
 import { UserRow } from '../rows/UserRow';
 import { getUserById } from '../sql/queries';
+import { logUser as u } from '../utils/discord';
 import logger from '../utils/logger';
 
 const command: ICommand = {
@@ -66,7 +67,9 @@ const command: ICommand = {
 					)
 					.then((newMessage) =>
 						logger.info(
-							`Notified (${newMessage.id}) Santa, ${santaDiscordUser.tag} (${santaDiscordUser.id}), of giftee, ${message.author.tag} (${message.author.id}), profile change`
+							`[profile] Notified (${newMessage.id}) Santa, ${u(
+								santaDiscordUser
+							)}, of giftee, ${u(message.author)}, profile change`
 						)
 					);
 			}

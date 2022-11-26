@@ -1,5 +1,5 @@
 import { Message } from 'discord.js';
-import { ICommand } from '../ICommand';
+import type { ICommand } from '../ICommand';
 import { query } from '../mysql';
 import { ExchangeRow } from '../rows/ExchangeRow';
 import { UserRow } from '../rows/UserRow';
@@ -13,6 +13,7 @@ import shipped from './shipped';
 import received from './received';
 import logger from '../utils/logger';
 import { getUserById } from '../sql/queries';
+import { logUser as u } from '../utils/discord';
 
 const command: ICommand = {
 	name: 'remind',
@@ -39,8 +40,9 @@ const command: ICommand = {
 			`SELECT * FROM users WHERE exchangeId = ?`,
 			[userRow.exchangeId]
 		);
-		if (!participantRows)
+		if (!participantRows) {
 			return console.error('No participants to remind');
+		}
 
 		participantRows.forEach(async (participantRow) => {
 			let notificationUser = await message.client.users.fetch(
@@ -114,12 +116,16 @@ const command: ICommand = {
 			await Promise.all(promises)
 				.then((resolved) =>
 					logger.info(
-						`[remind] Sent ${santaTasks.length} santa tasks and ${gifteeTasks.length} giftee tasks to ${notificationUser.tag} (${notificationUser.id})`
+						`[remind] Sent ${santaTasks.length} santa tasks and ${
+							gifteeTasks.length
+						} giftee tasks to ${u(notificationUser)}`
 					)
 				)
 				.catch((reason) =>
 					logger.error(
-						`[remind] Unable to send reminders to ${notificationUser.tag} (${notificationUser.id}). Discord error: ${reason}`
+						`[remind] Unable to send reminders to ${u(
+							notificationUser
+						)}. Discord error: ${reason}`
 					)
 				);
 		});

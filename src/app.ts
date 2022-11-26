@@ -45,15 +45,27 @@ for (const file of commandFiles) {
 }
 
 client.on('message', (message: Message) => {
-	if (message.author.bot) return;
-	else if (client.fullLockdown)
+	if (message.author.bot) {
+		return;
+	} else if (client.fullLockdown) {
 		return console.log('[APP] Ignored message.');
-	else if (client.sets.bannedUsers.has(message.author.id)) return;
-	else if (!message.content.toLowerCase().startsWith(config.prefix))
-		return; // Ignore if message doesn't start with prefix.
+	} else if (client.sets.bannedUsers.has(message.author.id)) {
+		return;
+	}
 
-	if (message.channel.type === 'dm') handleCmd(message, config.prefix);
-	else handleCmd(message, config.prefix);
+	if( message.channel.type === 'dm') {
+		messageLogger.info(`${logUser(message.author)}: \`${message.content}\``)
+	}
+
+	if (!message.content.toLowerCase().startsWith(config.prefix)) {
+		return;
+	} else {
+		if (message.channel.type === 'dm') {
+			handleCmd(message, config.prefix);
+		} else {
+			handleCmd(message, config.prefix);
+		}
+	}
 });
 
 client.on('error', (err: any) => {
@@ -68,7 +80,9 @@ client.on('disconnect', (err: any) => {
 });
 
 client.on('debug', (message: any) => {
-	if (config.debug) console.debug(message);
+	if (config.debug) {
+		console.debug(message);
+	}
 });
 
 client.on('reconnecting', () => {
@@ -123,12 +137,15 @@ client.on('ready', async () => {
 import wishlistCommand from './commands/setwishlist';
 import addressCommand from './commands/address';
 import leaveCommand from './commands/leave';
-import logger from './utils/logger';
+import logger, { messageLogger } from './utils/logger';
+import { logUser, logUser as u } from './utils/discord';
 
 client.on(
 	'messageReactionAdd',
 	async (reaction: MessageReaction, user: User | PartialUser) => {
-		if (reaction.emoji.name !== '🎅') return;
+		if (reaction.emoji.name !== '🎅') {
+			return;
+		}
 
 		const exchangeId = reaction.message.id;
 		const exchange = (
@@ -138,7 +155,9 @@ client.on(
 		)[0];
 
 		// no exchange associated with message
-		if (!exchange) return;
+		if (!exchange) {
+			return;
+		}
 		// exchange already started
 		else if (exchange.started === 1) {
 			return user.send(
@@ -235,7 +254,7 @@ client.on(
 				.send({ content: messageString })
 				.then((message) =>
 					logger.info(
-						`[app] welcome message ${message.id} sent to ${recipient.tag} (${recipient.id}) `
+						`[app] welcome message ${message.id} sent to ${u(recipient)} `
 					)
 				)
 				.catch((uhoh) => {
@@ -254,10 +273,10 @@ client.on(
 process.on('unhandledRejection', (reason, p) => {
 	console.error(
 		'[APP][' +
-			new Date().toLocaleString(undefined, {
-				timeZone: 'America/New_York',
-			}) +
-			'] Unhandled Rejection: ',
+		new Date().toLocaleString(undefined, {
+			timeZone: 'America/New_York',
+		}) +
+		'] Unhandled Rejection: ',
 		reason
 	);
 });

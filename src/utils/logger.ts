@@ -14,4 +14,11 @@ const logger = winston.createLogger({
 	],
 });
 
+export const messageLogger = winston.createLogger({
+	format: combine(timestamp(), myFormat),
+	transports: [
+		new winston.transports.File({ filename: 'logs/messages.log' }),
+	],
+});
+
 export default logger;

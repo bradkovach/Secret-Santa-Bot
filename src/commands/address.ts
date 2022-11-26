@@ -1,9 +1,10 @@
 import { Message, MessageEmbed } from 'discord.js';
-import { ICommand } from '../ICommand';
+import type { ICommand } from '../ICommand';
 import { query } from '../mysql';
 import { ExchangeRow } from '../rows/ExchangeRow';
 import { UserRow } from '../rows/UserRow';
 import { getUserById } from '../sql/queries';
+import { logUser as u } from '../utils/discord';
 import logger from '../utils/logger';
 
 const command: ICommand = {
@@ -69,7 +70,9 @@ const command: ICommand = {
 		);
 
 		logger.info(
-			`[address] Updated ${message.author.tag} (${message.author.id}) address to '${addressToSet}'; Old value '${oldUserRow.address}'`
+			`[address] Updated ${u(
+				message.author
+			)} address to '${addressToSet}'; Old value '${oldUserRow.address}'`
 		);
 	},
 };
