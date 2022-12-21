@@ -1,6 +1,3 @@
-import { Database } from '../Database';
-import { createBannedSQL } from '../mysql';
-
 type DisposableCallback<DisposableType, DisposableReturnType> = (
 	disposable: DisposableType
 ) => DisposableReturnType;
@@ -77,10 +74,12 @@ export function withDisposableAsync<DisposableType, DisposableReturnType>(
 			cb: DisposableCallbackAsync<DisposableType, DisposableReturnType>
 		) => {
 			const asyncResult = cb(disposable);
-			
+
 			asyncResult.finally(() => {
-				console.log(`withDisposable: calling disposable.${disposeMethodName}()`);
-				if( disposable && (disposable as any)[disposeMethodName]){
+				console.log(
+					`withDisposable: calling disposable.${disposeMethodName}()`
+				);
+				if (disposable && (disposable as any)[disposeMethodName]) {
 					(disposable as any)[disposeMethodName]();
 				}
 			});

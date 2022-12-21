@@ -1,79 +1,111 @@
-import { Message, MessageEmbed } from 'discord.js';
+import { EmbedBuilder, Guild, Message } from 'discord.js';
+import { sendMessageToChannel } from '../exchange/sendMessageToChannel';
 import type { ICommand } from '../ICommand';
-import { query } from '../mysql';
-import { ExchangeRow } from '../rows/ExchangeRow';
-import { UserRow } from '../rows/UserRow';
-import { getUserById } from '../sql/queries';
-import { logUser as u } from '../utils/discord';
+import { DatabaseManager } from '../model/database';
+
+import { ParticipantState } from '../ParticipantState';
+import { ChannelRow } from '../model/channels.table';
+import { ExchangeRow } from '../model/exchange.table';
+import { ParticipantRow } from '../model/participants.table';
+import { Participant } from '../model/Participant';
+import { flagFromThree } from '../utils/countries';
 import logger from '../utils/logger';
+
+interface ParticipantInfo
+	extends ParticipantRow,
+		ChannelRow,
+		ExchangeRow {}
 
 const command: ICommand = {
 	name: 'address',
-	aliases: ['setaddress'],
 	usage: 'address 1234 Your Street; Boston, MA 02134',
 	description:
 		'Enter your address so your Secret Santa can ship your gift.',
-	hasArgs: true,
-	requirePartner: false,
-	worksInDM: true,
-	forceDMsOnly: true,
-	modOnly: false,
-	adminOnly: false,
 
-	async execute(message: Message, args: string[], prefix: string) {
-		var addressToSet = args.join(' ');
+	allowAfter: ParticipantState.JOINED,
+	allowBefore: ParticipantState.SHIPPED_BY_SANTA,
 
-		if (addressToSet.length >= 1000) {
+	allowOwner: false,
+	allowAdmin: false,
+	showInHelp: false,
+	respondInChannelTypes: ['participant'],
+	protectInvocation: true,
+
+	execute: async function (
+		guild: Guild,
+		message: Message,
+		address: string,
+		context: ParticipantInfo
+	): Promise<any> {
+		if (!message.channel) {
+			return;
+		}
+
+		if (address.trim().length === 0) {
+			return message.reply(
+				`Your address cannot be blank. Please try again with a longer address.`
+			);
+		}
+
+		if (address.length >= 1000) {
 			return message.reply(
 				'Your address can only be a maximum of 1000 characters long!'
 			);
 		}
 
-		let oldUserRow = (
-			await query<UserRow[]>(getUserById, [message.author.id])
-		)[0];
-
-		await query<never>(
-			`UPDATE users SET address = ?, standardized_address = ''  WHERE userId = ?`,
-			[addressToSet, message.author.id]
+		logger.info(
+			`Updating address for ${message.author.tag} from '${context.address}' to '${address}'.`
 		);
 
-		const exchangeAndSanta = (
-			await query<({ santaId: number } & ExchangeRow)[]>(
-				`SELECT Exchange.*, User.userId as santaId
-			FROM users User
-			INNER JOIN exchange Exchange on User.exchangeId = Exchange.exchangeId
-			WHERE User.partnerId = ?`,
-				message.author.id
-			)
-		)[0];
-
-		if (exchangeAndSanta && exchangeAndSanta.started === 1) {
-			let santaDiscordUser = await message.client.users.fetch(
-				exchangeAndSanta.santaId.toString()
-			);
-
-			if (santaDiscordUser) {
-				santaDiscordUser.send(
-					new MessageEmbed()
-						.setTitle('Giftee Address Changed')
-						.setDescription(
-							`Your giftee, @${message.author.tag}, just updated their address.`
+		if (context.started) {
+			Participant.fromParticipantId(context.participant_id)
+				.then((participant) => participant.getSanta())
+				.then((santa) => {
+					santa
+						.getChannels()
+						.then((channels) =>
+							channels.find((c) => c.role === 'participant')
 						)
-						.addField('Updated Address', addressToSet)
-				);
-			}
+						.then((channel) => {
+							return sendMessageToChannel(guild, santa, 'participant', {
+								content: `Your giftee has updated their address!`,
+								embeds: [
+									new EmbedBuilder().addFields([
+										{ name: 'Updated Address', value: address },
+									]),
+								],
+							});
+						});
+				});
 		}
 
-		message.reply(
-			'**Successfully set your address to:**\n\n' + addressToSet
-		);
-
-		logger.info(
-			`[address] Updated ${u(
-				message.author
-			)} address to '${addressToSet}'; Old value '${oldUserRow.address}'`
-		);
+		return await DatabaseManager.getInstance()
+			.updateTable('participants')
+			.set({ address })
+			.where('participant_id', '=', context.participant_id)
+			.execute()
+			.then((updated) => {
+				message
+					.reply({
+						content: `Your address has been updated!  React to any bot message with your flag to set your country.`,
+						embeds: [
+							new EmbedBuilder().setFields([
+								...(context.address.trim() === ''
+									? []
+									: [
+											{
+												name: 'Old Address',
+												value: context.address.trim(),
+											},
+									  ]),
+								{ name: 'New Address', value: address },
+							]),
+						],
+					})
+					.then((replyMessage) =>
+						replyMessage.react(flagFromThree(context.iso_country_code))
+					);
+			});
 	},
 };
 

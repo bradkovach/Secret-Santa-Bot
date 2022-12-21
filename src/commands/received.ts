@@ -1,97 +1,300 @@
-import { Message } from 'discord.js';
-import { query } from '../mysql';
-import { UserRow } from '../rows/UserRow';
-import config from '../config.json';
+import {
+	bold,
+	Guild,
+	inlineCode,
+	italic,
+	Message,
+	strikethrough
+} from 'discord.js';
+import { UpdateResult } from 'kysely';
+import { sendMessageToChannel } from '../exchange/sendMessageToChannel';
 import type { ICommand } from '../ICommand';
-import logger from '../utils/logger';
-import { logUser as u } from '../utils/discord';
+import { Channel } from '../model/Channel';
+import { DatabaseManager } from '../model/database';
+import { Match } from '../model/Match';
+import { ParticipantRow } from '../model/participants.table';
+import { ParticipantState } from '../ParticipantState';
+import logger, {
+	logAndReturnMessage
+} from '../utils/logger';
+import { showCommandUsage } from '../utils/showCommandUsage';
+import { brjoin, p, passage } from '../utils/text';
+
+import { printChannelContext } from '../exchange/printMessage';
+import { Shipment } from '../model/Shipment';
+import { isGuildTextChannel } from '../utils/discord/isGuildTextChannel';
+import shippedCommand from './shipped';
+
+function gifteeAnInvalidShipmentNumberWasProvided(
+	shipments: Shipment<false>[]
+): string {
+	return passage(
+		p(
+			`You specified an invalid shipment.`,
+			`Either that shipment doesn't exist, or it's already marked as received.`,
+			`Please provide a shipment number between 1 and ${shipments.length}.`
+		),
+		printShipments(shipments)
+	);
+}
+
+function santaYourMatchHasReceivedAShipment(
+	shipment: Shipment<false>
+): string {
+	return passage(
+		p(
+			`Your match has received your gift with tracking number ${shipment.tracking_number}.`
+		)
+	);
+}
+
+const markShipmentReceived = (
+	shipment_id: bigint
+): Promise<UpdateResult> => {
+	return DatabaseManager.getInstance()
+		.updateTable('shipments')
+		.set({
+			received: true,
+		})
+		.where('shipment_id', '=', shipment_id)
+		.executeTakeFirst();
+};
+
+const printShipments = (shipments: Shipment[]) =>
+	brjoin(
+		bold(`Here are the shipments from your Secret Santa...`),
+		...shipments.map((shipment, idx) => {
+			return shipment.received
+				? strikethrough(
+						`Shipment ${idx + 1}. ${inlineCode(
+							shipment.tracking_number ?? ''
+						)} received at ${shipment.updated}`
+				  )
+				: `Shipment ${idx + 1}. ${inlineCode(
+						shipment.tracking_number ?? ''
+				  )} shipped at ${shipment.created}`;
+		})
+	);
+
+const gifteeNoOutstandingGifts = passage(
+	p(
+		`Either your Secret Santa hasn't shipped your gift, or you've already marked all shipments as received!`,
+		`Try this command again once you've received a shipping notification.`
+	)
+);
+const santaNoOutstandingGifts = passage(
+	p(
+		`Your match just tried to mark a gift as received, but there aren't any known shipments...`,
+	),
+	brjoin(
+		italic(`To mark a gift as shipped, reply...`),
+		inlineCode(`santa! shipped USPS 00001111222233334444`)
+	)
+);
+const gifteeOneShipmentReceived = passage(
+	p(`Your gift has been marked as received!`)
+);
+const santaOneShipmentReceived = passage(
+	p(
+		`Your giftee has received their gift!`,
+		`Thank you for participating in this Secret Santa exchange!`
+	)
+);
+const gifteeAShipmentMarkedAsReceived = passage(
+	p(`This shipment has been marked as received!`)
+);
 
 const command: ICommand = {
 	name: 'received',
-	aliases: ['setreceived'],
-	usage: 'received',
-	description: 'Mark your gift as received.',
-	hasArgs: false,
-	requirePartner: false,
-	worksInDM: true,
-	forceDMsOnly: true,
-	modOnly: false,
-	adminOnly: false,
+	usage: 'received [shipment number]',
+	description:
+		'Mark your gift as received. Include shipment number if your Santa has sent more than one shipment.',
+
+	allowAfter: ParticipantState.SHIPPED_BY_SANTA,
+
+	allowOwner: false,
+	allowAdmin: false,
+	showInHelp: false,
+	respondInChannelTypes: ['participant'],
 
 	async execute(
-		receiptNotificationMessage: Message,
-		args: string[],
-		prefix: string
-	) {
-		const santaRow = (
-			await query<UserRow[]>(
-				`SELECT * 
-				FROM users 
-				WHERE partnerId = ? 
-				AND received = 0`,
-				[receiptNotificationMessage.author.id]
-			)
-		)[0];
-		if (!santaRow) {
-			return await receiptNotificationMessage.reply(
-				'There was a problem marking your package as received!  Did your Santa send it?'
+		guild: Guild,
+		messageFromGiftee: Message,
+		subcommand: string,
+		gifteeParticpant: ParticipantRow
+	): Promise<Message[]> {
+		logAndReturnMessage(messageFromGiftee, '`received` command');
+		const dChannel = messageFromGiftee.channel;
+
+		if (!isGuildTextChannel(dChannel)) {
+			logger.verbose(
+				`[received] recieved message from non-guild/non-text channel. ${printChannelContext(
+					dChannel
+				)}`
+			);
+			return Promise.reject(
+				`[received] Channel ${dChannel.id} cannot be used to mark shipments as received.`
 			);
 		}
 
-		const updateResult = await query<never>(
-			`UPDATE users SET received = 1 WHERE partnerId = ?`,
-			[receiptNotificationMessage.author.id]
-		);
-		console.log({ updateResult });
+		return Channel.fromDiscordChannelId(dChannel.id)
+			.then((ch) => {
+				logger.verbose(
+					`[received] getting match for channel's participant, ${ch.participant_id}`
+				);
+				return Match.fromGifteeParticipantId(ch.participant_id).then(
+					(match) =>
+						Promise.all([
+							match.getGifteeParticipant(),
+							match.getSantaParticipant(),
+							match.getShipments(),
+						]).then(([giftee, santa, shipments]) => {
+							logger.verbose(
+								`[received]    got [match ${match.match_id}]: [santa ${santa.participant_id}], [giftee ${giftee.participant_id}], [shipments: ${shipments.length}]`
+							);
+							return {
+								match,
+								santa,
+								giftee,
+								shipments,
+							};
+						})
+				);
+			})
+			.then(({ santa, match, giftee, shipments }) => {
+				logger.verbose(
+					`[received]    found ${shipments.length} shipments [match ${match.match_id}] => [santa ${match.santa_participant_id}] and [giftee ${match.giftee_participant_id}]`
+				);
+				shipments.forEach((shipment, idx) => {
+					logger.verbose(
+						`[received]       ${
+							idx + 1
+						}. Shipped ${shipment.created.toLocaleString()} with tracking # '${
+							shipment.tracking_number
+						}'. Received? ${shipment.received} [match ${
+							match.match_id
+						}] [shipment ${shipment.shipment_id}]`
+					);
+				});
 
-		const santa = await receiptNotificationMessage.client.users.fetch(
-			santaRow.userId.toString()
-		);
-		if (!santa) {
-			console.log(`Unable to find santa ${santaRow.userId} in Discord.`);
-		}
+				const notReceivedYet = shipments.filter(
+					(shipment) => shipment.received === false
+				);
 
-		const giftee = receiptNotificationMessage.author;
-		if (!giftee) {
-			console.log(`There was a problem with the giftee object.`);
-		}
+				logger.verbose(
+					`[received]    ${notReceivedYet.length} of ${shipments.length} have not been received. [match ${match.match_id}] `
+				);
 
-		return await Promise.all([
-			santa
-				.send(
-					[
-						`Your giftee, ${giftee.toString()}, has received their gift!`,
-						`Thank you for participating in Secret Santa!`,
-					].join(' ')
+				const toMarkReceived: Shipment[] = [];
+				const toTellSanta: string[] = [];
+				const toTellGiftee: string[] = [];
+
+				// if no outstanding shipments
+				if (notReceivedYet.length === 0) {
+					// reply that santa hasn't marked their gift as shipped
+					toTellGiftee.push(gifteeNoOutstandingGifts);
+					// remind santa to ship their gift
+					toTellSanta.push(santaNoOutstandingGifts);
+				} else if (notReceivedYet.length === 1) {
+					// if one shipment
+					//    mark as received
+					toMarkReceived.push(notReceivedYet[0].setReceived(true));
+					toTellGiftee.push(gifteeOneShipmentReceived);
+					toTellSanta.push(santaOneShipmentReceived);
+				} else {
+					// if many shipments
+					const shipmentNum = parseInt(subcommand, 10);
+					logger.verbose(
+						`[received]    giftee has many shipments; attempted to parse '${subcommand}' to number: (${shipmentNum}) [match ${match.match_id}]`
+					);
+					//    if no index specified
+					if (
+						!isNaN(shipmentNum) &&
+						0 < shipmentNum &&
+						shipmentNum <= shipments.length
+					) {
+						logger.verbose(
+							`[received]       ${shipmentNum} is numeric and is within the position bounds of shipment array [match ${match.match_id}]`
+						);
+
+						//    else if index supplied AND index in array
+						const shipmentIdx = shipmentNum - 1;
+						const shipment = shipments[shipmentIdx];
+						if (shipment) {
+							toMarkReceived.push(shipment.setReceived(true));
+
+							toTellGiftee.push(gifteeAShipmentMarkedAsReceived);
+							toTellSanta.push(
+								santaYourMatchHasReceivedAShipment(shipment)
+							);
+							if (notReceivedYet.length > 1) {
+								toTellGiftee.push(
+									passage(
+										p(
+											`There are still ${
+												notReceivedYet.length - 1
+											} packages for you to receive/mark as received!`
+										),
+										printShipments(shipments)
+									)
+								);
+								toTellSanta.push(
+									passage(
+										p(
+											`Your match is still expecting ${
+												notReceivedYet.length - 1
+											} gifts from you!`
+										)
+									)
+								);
+							}
+						} else {
+							// reply that an invalid shipment number was provided
+							toTellGiftee.push(
+								gifteeAnInvalidShipmentNumberWasProvided(shipments)
+							);
+						}
+					} else {
+						logger.verbose(
+							`[received]       '${subcommand}' could not be parsed as a valid number! [match ${match.match_id}]`
+						);
+						toTellGiftee.push(
+							passage(
+								p(
+									`An invalid shipment number was provided!`,
+									`Please specify a shipment number between 1 and ${shipments.length}`
+								),
+								printShipments(shipments)
+							)
+						);
+					}
+				}
+
+				return Promise.all(
+					toMarkReceived.map((shipment) =>
+						markShipmentReceived(shipment.shipment_id)
+					)
 				)
-				.then((message) =>
-					Promise.all([
-						message.react('📦'),
-						message.react('📤'),
-						message.react('✅'),
-					])
-				),
-			giftee
-				.send(
-					[
-						`Your gift has been marked as received and your Secret Santa has been notified!`,
-						`Your secret santa was ${santa.tag}.`,
-					].join(' ')
-				)
-				.then((message) =>
-					Promise.all([
-						message.react('📦'),
-						message.react('📥'),
-						message.react('✅'),
-					])
-				),
-		]).then((allSent) =>
-			logger.info(
-				`[received] Giftee ${u(giftee)} has received their gift from ${u(
-					santa
-				)}.`
-			)
-		);
+					.then((shipments) =>
+						messageFromGiftee
+							.reply(passage(toTellGiftee))
+							.then(logAndReturnMessage)
+					)
+					.then((replyToGiftee) => {
+						if (toTellSanta.length > 0) {
+							return sendMessageToChannel(
+								guild,
+								santa,
+								'participant',
+								passage(toTellSanta)
+							)
+								.then(logAndReturnMessage)
+								.then((messageToSanta) => [replyToGiftee, messageToSanta]);
+						} else {
+							return Promise.resolve([replyToGiftee]);
+						}
+					});
+			});
 	},
 };
 

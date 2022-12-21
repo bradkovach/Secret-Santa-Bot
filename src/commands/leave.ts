@@ -1,45 +1,65 @@
-import { Message } from 'discord.js';
+import { Guild, Message } from 'discord.js';
+import { ParticipantState } from '../ParticipantState';
 import type { ICommand } from '../ICommand';
-import { query } from '../mysql';
-import { UserRow } from '../rows/UserRow';
-import { getUserById } from '../sql/queries';
-import { logUser as u } from '../utils/discord';
+import { DatabaseManager } from '../model/database';
 import logger from '../utils/logger';
 
 const command: ICommand = {
 	name: 'leave',
-	aliases: ['quit'],
 	usage: 'leave',
-	description: 'Withdraw from the secret santa gift exchange.',
-	hasArgs: false,
-	requirePartner: false,
-	worksInDM: true,
-	forceDMsOnly: true,
-	modOnly: false,
-	adminOnly: false,
+	description:
+		'Withdraw from the Secret Santa gift exchange.  You cannot leave the exchange after it has started without first contacting a moderator.',
 
-	async execute(message: Message, args: string[], prefix: string) {
-		const users = await query<UserRow[]>(getUserById, [message.author.id]);
-		if (users && users[0]) {
-			const user = users[0];
-			if (user.partnerId !== 0) {
-				message.reply(
-					`The secret santa exchange has already started! Please talk to one of the admins to leave the exchange.`
-				);
-			} else {
-				await query<never>(
-					`DELETE FROM users WHERE partnerId = '' AND userId = ?`,
-					[message.author.id]
-				);
-				message.reply(
-					`You are no longer participating in this Secret Santa exchange! To rejoin, just unreact and react to the announcement post.`
-				);
-				logger.info(
-					`[leave] ${u(
-						message.author
-					)} has left the Secret Santa Exchange, ${user.exchangeId}`
-				);
-			}
+	allowAfter: ParticipantState.JOINED,
+	allowBefore: ParticipantState.HAS_GIFTEE,
+
+	allowOwner: false,
+	allowAdmin: false,
+	showInHelp: false,
+	respondInChannelTypes: ['participant'],
+
+	async execute(
+		guild: Guild,
+		message: Message,
+		subcommand: string,
+		context
+	) {
+		if (context.started) {
+			message.reply(
+				`This exchange has already started, and you must talk to a moderator of ${guild.name} if you would like to leave.`
+			);
+		} else {
+			logger.info(`${message.member!.displayName} left the exchange.`);
+			// delete channels
+			DatabaseManager.getInstance()
+				.selectFrom('channels')
+				.where('participant_id', '=', context.participant_id)
+				.selectAll()
+				.execute()
+				.then((channels) => {
+					return channels.map(
+						async (channel) =>
+							await guild.channels.delete(
+								channel.discord_channel_id,
+								'User left gift exchange'
+							)
+					);
+				})
+				.then((deleted) => {
+					return DatabaseManager.getInstance()
+						.deleteFrom('participants')
+						.where('participant_id', '=', context.participant_id)
+						.execute()
+						.then((deleted) => {
+							return message.author.send(
+								`You have been removed from the ${guild.name} Secret Santa exchange.`
+							);
+						})
+						.then((sent) => {
+							return sent.react('🫡');
+						});
+				});
+			// delete participant
 		}
 	},
 };

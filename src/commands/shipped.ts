@@ -1,115 +1,102 @@
-import { Message } from 'discord.js';
-import { query } from '../mysql';
-import { UserRow } from '../rows/UserRow';
-import config from '../config.json';
-import receivedCommand from './received';
+import {
+	EmbedBuilder,
+	Guild,
+	inlineCode,
+	italic,
+	Message
+} from 'discord.js';
+import { sendMessageToChannel } from '../exchange/sendMessageToChannel';
 import type { ICommand } from '../ICommand';
-import logger from '../utils/logger';
-import { getUserById } from '../sql/queries';
-import { logUser as u } from '../utils/discord';
+import { Channel } from '../model/Channel';
+import { ChannelRow } from '../model/channels.table';
+import { ExchangeRow } from '../model/exchange.table';
+import { Match } from '../model/Match';
+import { ParticipantRow } from '../model/participants.table';
+import { ParticipantState } from '../ParticipantState';
+import logger, {
+	logAndReturnMessage
+} from '../utils/logger';
+import { showCommandUsage } from '../utils/showCommandUsage';
+import { brjoin, p, passage } from '../utils/text';
+import { sentEmoji } from './create';
+import receivedCommand from './received';
 
 const command: ICommand = {
 	name: 'shipped',
-	aliases: ['setshipped'],
-	usage: 'shipped <tracking number>',
-	description: 'Mark your gift as shipped.',
-	hasArgs: false,
-	requirePartner: false,
-	worksInDM: true,
-	forceDMsOnly: true,
-	modOnly: false,
-	adminOnly: false,
+	usage: 'shipped [tracking number or information]',
+	description:
+		'Mark your gift as shipped.  Include tracking number or information such as who it was shipped with.',
+
+	allowAfter: ParticipantState.HAS_GIFTEE,
+	allowBefore: ParticipantState.SHIPPED_TO_GIFTEE,
+
+	allowOwner: false,
+	allowAdmin: false,
+	showInHelp: false,
+	respondInChannelTypes: ['participant'],
+
+	protectInvocation: true,
 
 	async execute(
-		shippingNotificationMessage: Message,
-		args: string[],
-		prefix: string
+		guild: Guild,
+		message: Message,
+		tracking_number: string,
+		info: ChannelRow & ParticipantRow & ExchangeRow
 	) {
-		const santaRow = (
-			await query<UserRow[]>(getUserById, [
-				shippingNotificationMessage.author.id,
-			])
-		)[0];
-		if (!santaRow) {
-			return await shippingNotificationMessage
-				.reply('Problem fetching your santa details')
-				.then((newMessage) =>
-					logger.error(
-						`[shipped] Unable to find santa with id ${shippingNotificationMessage.author.id}.`
+		logAndReturnMessage(message, 'shipped command');
+		if (!info) {
+			logger.info(`[shipped] No participant information.`);
+			return;
+		}
+
+		tracking_number =
+			['none', ''].indexOf(tracking_number.toLowerCase().trim()) > -1
+				? '<no tracking info provided>'
+				: tracking_number.trim();
+
+		// log
+		logger.info(`[shipped] Marking gift as shipped...`);
+
+		// update
+		return Channel.fromDiscordChannelId(message.channelId)
+			.then((channel) => channel.getParticipant())
+			.then((santa) =>
+				santa.getGiftees().then((giftees) => ({ santa, giftees }))
+			)
+			.then(({ santa, giftees }) => {
+				if (giftees.length !== 1) {
+					return Promise.reject(`Number of giftees was not 1`);
+				}
+				const giftee = giftees.shift();
+				if (!giftee) {
+					return Promise.reject(
+						`Unable to find giftee for participant ${santa.participant_id}!`
+					);
+				}
+				return Match.fromGifteeParticipantId(giftee.participant_id)
+					.then((match) => match.createShipment(tracking_number))
+					.then((shipment) =>
+						sendMessageToChannel(guild, giftee, 'participant', {
+							content: passage(
+								p(`Your Secret Santa has marked your gift as shipped!`),
+								brjoin(
+									italic(
+										`When your gift arrives, mark it received by replying...`
+									),
+									inlineCode(showCommandUsage(receivedCommand))
+								)
+							),
+							embeds: [
+								new EmbedBuilder()
+									.setTitle('Your Shipment')
+									.setFields([
+										{ name: 'Tracking Number', value: tracking_number },
+									]),
+							],
+						})
 					)
-				);
-		}
-
-		const gifteeRow = (
-			await query<UserRow[]>(getUserById, [santaRow.partnerId])
-		)[0];
-		if (!gifteeRow) {
-			return await shippingNotificationMessage
-				.reply('Problem fetching your giftee details.')
-				.then((newMessage) =>
-					logger.error(
-						`[shipped] Unable to find giftee with id ${santaRow.partnerId}.`
-					)
-				);
-		}
-
-		const santa = await shippingNotificationMessage.client.users.fetch(
-			santaRow.userId.toString()
-		);
-		if (!santa) {
-			return logger.error(
-				`Unable to fetch() Santa by ${santaRow.userId} in Discord.`
-			);
-		}
-
-		const giftee = await shippingNotificationMessage.client.users.fetch(
-			gifteeRow.userId.toString()
-		);
-		if (!giftee) {
-			return await shippingNotificationMessage
-				.reply('Unable to find your giftee in Discord')
-				.then((newMessage) =>
-					logger.error(
-						`[shipped] Unable to fetch() Giftee by ${gifteeRow.userId} in Discord.`
-					)
-				);
-		}
-
-		if (args && args[0] && args[0].trim() !== '') {
-			const trackingNumber = args.join(' ');
-			// store the tracking number in the santaRow
-			query<never>(
-				`UPDATE users SET tracking_number = ? WHERE userId = ?`,
-				[trackingNumber, santaRow.userId]
-			);
-
-			// send the giftee a message
-			const gifteeNotification = await giftee.send(
-				[
-					'**Your Secret Santa has shipped your gift!**',
-					'',
-					`You can track your gift with tracking number ${trackingNumber}. Please mark your gift as received by replying \`${config.prefix}${receivedCommand.name}\`.`,
-				].join('\n')
-			);
-
-			if (!gifteeNotification) {
-				return await shippingNotificationMessage.reply(
-					'Unable to notify your giftee about your shipment. Try again later.'
-				);
-			} else {
-				logger.info(
-					`[shipped] ${u(santa)} shipped their gift to ${u(
-						giftee
-					)} with tracking number ${trackingNumber}.`
-				);
-			}
-
-			return await shippingNotificationMessage.react('📦');
-		} else {
-			return await shippingNotificationMessage.reply(
-				`To mark your gift as shipped, include a tracking number in the format \`${config.prefix}${this.name} <tracking number>\`.`
-			);
-		}
+					.then((gifteeMessage) => message.react(sentEmoji));
+			});
 	},
 } as ICommand;
 

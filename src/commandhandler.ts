@@ -1,90 +1,61 @@
-import { Message } from 'discord.js';
-import type { ICommand } from './ICommand';
-import { query } from './mysql';
-import { UserRow } from './rows/UserRow';
-import { logUser } from './utils/discord';
-import {messageLogger} from './utils/logger';
-import { Methods } from './utils/methods';
-import helpCommand from './commands/help'
+import {
+	Channel,
+	Guild,
+	GuildChannel,
+	Message,
+	TextChannel,
+} from 'discord.js';
+import { getOtherChannel } from './getOtherChannel';
+import { IConfig } from './IConfig';
+import { DatabaseManager } from './model/database';
+import { DiscordSnowflake } from './model/participants.table';
 
-export const handleCmd = async (message: Message, prefix: string) => {
-	const args = message.content.slice(prefix.length).split(/ +/);
-	const commandName = args!.shift()!.toLowerCase();
-	const command =
-		message.client.commands.get(commandName) ||
-		message.client.commands.find(
-			(cmd: ICommand) => cmd.aliases && cmd.aliases.includes(commandName)
-		);
+export const config = require('./config.json') as IConfig;
 
-	if (!command) {
-		if( message.channel.type === 'dm'  ) {
-
-			return message.reply(`Sorry, I was unable to understand what you are trying to do.  Send \`${prefix}${helpCommand.usage}\` for more assistance.`)
+export const isAdmin = (userId: string): Promise<boolean> => {
+	console.log(userId, ' in ', config.adminUsers);
+	return new Promise((resolve, reject) => {
+		if (config.adminUsers.indexOf(userId) > -1) {
+			resolve(true);
 		} else {
-			return;
+			reject('not a bot admin');
 		}
-	}
-	// Command doesnt exist
-	else if (!command.worksInDM && message.channel.type !== 'text') {
-		return message.reply("That command doesn't work in DMs!");
-	} else if (command.forceDMsOnly && message.channel.type !== 'dm') {
-		return message.reply('That command only works in DMs!');
-	}
-
-	if (message.channel.type !== 'dm') {
-		await cacheMembers(message);
-	}
-	if (
-		(
-			await query<UserRow[]>(`SELECT * FROM users WHERE userId = ?`, [
-				message.author.id,
-			])
-		).length === 0
-	) {
-		let methods = new Methods();
-		await methods.createNewUser(message.author.id); // Create new account in database for user BEFORE executing a command.
-	}
-
-	const row = (
-		await query<UserRow[]>(`SELECT * FROM users WHERE userId = ?`, [
-			message.author.id,
-		])
-	)[0];
-
-	if (command.requirePartner && row.partnerId == 0) {
-		return message.reply(
-			"A partner has not been chosen for you yet! Try again after you've been given a partner."
-		);
-	} else if (
-		command.modOnly &&
-		!message.member!.hasPermission('MANAGE_GUILD')
-	) {
-		return message.reply(
-			'You need the `MANAGE_SERVER` permission to run that command.'
-		);
-	} else if (
-		command.adminOnly &&
-		!message.client.sets.adminUsers.has(message.author.id)
-	) {
-		return message.reply(
-			'You must be an admin of the bot to run that command.'
-		);
-	}
-
-	try {
-		command.execute(message, args, prefix); // CALL COMMAND HERE
-		message.client.commandsUsed++;
-	} catch (err) {
-		console.error(err);
-		message.reply('Command failed to execute!');
-	}
+	});
 };
 
-async function cacheMembers(message: Message) {
-	try {
-		console.log('[CMD] Fetching members...');
-		await message.guild!.members.fetch();
-	} catch (err) {
-		console.log('[CMD] Failed to fetch guild members: ' + err);
-	}
-}
+export const isOwner = (
+	discord_user_id: string,
+	exchange_id: bigint
+): Promise<boolean> => {
+	return new Promise((resolve, reject) => {
+		DatabaseManager.getInstance()
+			.selectFrom('exchanges')
+			.where('discord_owner_user_id', '=', discord_user_id)
+			.where('exchange_id', '=', exchange_id)
+			.selectAll()
+			.executeTakeFirstOrThrow()
+			.then((row) => {
+				resolve(true);
+			})
+			.catch((reason) => {
+				reject(reason);
+			});
+	});
+};
+
+export const msgToMsgCache = new Map<DiscordSnowflake, Message>();
+
+// export const getTargetDiscordMessageFromDb = (
+// 	guild: Guild,
+// 	incomingMessage: Message,
+// ): Promise<Message> => {
+// 	const incomingDiscordChannel = incomingMessage.channel as TextChannel;
+// 	const channelRow = getOtherChannel(incomingDiscordChannel.id)
+
+// 	DatabaseManager.getInstance()
+// 		.selectFrom('messages')
+// 		.where('source_discord_message_id', '=', incomingMessage.id)
+// 		.selectAll()
+// 		.executeTakeFirstOrThrow()
+// 		.then((row) => guild.channels.cache.get(channelRow.discord_channel_id)));
+// };
