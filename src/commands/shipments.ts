@@ -1,4 +1,10 @@
-import { EmbedBuilder, Guild, italic, time } from 'discord.js';
+import {
+	EmbedBuilder,
+	Guild,
+	GuildMember,
+	italic,
+	time,
+} from 'discord.js';
 import { ICommand } from '../ICommand';
 import { Channel } from '../model/Channel';
 import { Match } from '../model/Match';
@@ -13,15 +19,17 @@ const shipmentToEmbedFields = (
 	shipment: Shipment<false>,
 	idx: number
 ): { name: string; value: string } => ({
-	name: `Shipment ${
-		idx + 1
-	}. Shipped ${time(shipment.created.getTime()/1000)}`,
+	name: `Shipment ${idx + 1}. Shipped ${time(
+		shipment.created.getTime() / 1000
+	)}`,
 	value: [
 		shipment.tracking_number && shipment.tracking_number.trim() !== ''
 			? shipment.tracking_number.trim()
 			: italic('<no tracking information provided>'),
 		shipment.received
-			? `${receivedEmoji} Received ${time(shipment.updated.getTime()/1000)}`
+			? `${receivedEmoji} Received ${time(
+					shipment.updated.getTime() / 1000
+			  )}`
 			: `${sentEmoji} Not Received`,
 	].join('\n'),
 });
@@ -46,14 +54,22 @@ const shipments: ICommand = {
 			})
 			.then((participant) => {
 				return Promise.all([
+					participant.getSanta(),
 					participant.getMatchAsGiftee(),
 					participant.getMatchesAsSanta(),
-				]).then(([matchAsGiftee, matchesAsSanta]: [Match, Match[]]) => {
-					return { matchAsGiftee, matchesAsSanta };
-				});
+				]).then(
+					([santaParticipant, matchAsGiftee, matchesAsSanta]: [
+						Participant,
+						Match,
+						Match[]
+					]) => {
+						return { santaParticipant, matchAsGiftee, matchesAsSanta };
+					}
+				);
 			})
-			.then(({ matchAsGiftee, matchesAsSanta }) => {
+			.then(({ santaParticipant, matchAsGiftee, matchesAsSanta }) => {
 				return Promise.all([
+					guild.members.fetch(santaParticipant.discord_user_id),
 					matchAsGiftee.getShipments(),
 					Promise.all(
 						matchesAsSanta.flatMap((match) =>
@@ -68,16 +84,23 @@ const shipments: ICommand = {
 						)
 					),
 				]).then(
-					([incomingShipments, outgoingShipments]: [
+					([santaMember, incomingShipments, outgoingShipments]: [
+						GuildMember,
 						Shipment[],
 						{ match: Match; giftee: Participant; shipments: Shipment[] }[]
 					]) => {
 						const embeds: EmbedBuilder[] = [];
 
+						const allReceived = incomingShipments.every((s) => s.received);
+
 						if (incomingShipments.length > 0) {
 							embeds.push(
 								new EmbedBuilder()
-									.setTitle(`Your Secret Santa has sent the following...`)
+									.setTitle(
+										`Your Secret Santa${
+											allReceived ? `, ${santaMember.displayName},` : ''
+										} has sent the following...`
+									)
 									.setFields(incomingShipments.map(shipmentToEmbedFields))
 							);
 						}

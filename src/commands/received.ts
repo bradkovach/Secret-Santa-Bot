@@ -4,7 +4,7 @@ import {
 	inlineCode,
 	italic,
 	Message,
-	strikethrough
+	strikethrough,
 } from 'discord.js';
 import { UpdateResult } from 'kysely';
 import { sendMessageToChannel } from '../exchange/sendMessageToChannel';
@@ -14,9 +14,7 @@ import { DatabaseManager } from '../model/database';
 import { Match } from '../model/Match';
 import { ParticipantRow } from '../model/participants.table';
 import { ParticipantState } from '../ParticipantState';
-import logger, {
-	logAndReturnMessage
-} from '../utils/logger';
+import logger, { logAndReturnMessage } from '../utils/logger';
 import { showCommandUsage } from '../utils/showCommandUsage';
 import { brjoin, p, passage } from '../utils/text';
 
@@ -84,7 +82,7 @@ const gifteeNoOutstandingGifts = passage(
 );
 const santaNoOutstandingGifts = passage(
 	p(
-		`Your match just tried to mark a gift as received, but there aren't any known shipments...`,
+		`Your match just tried to mark a gift as received, but there aren't any known shipments...`
 	),
 	brjoin(
 		italic(`To mark a gift as shipped, reply...`),
@@ -161,7 +159,7 @@ const command: ICommand = {
 						})
 				);
 			})
-			.then(({ santa, match, giftee, shipments }) => {
+			.then(async ({ santa, match, giftee, shipments }) => {
 				logger.verbose(
 					`[received]    found ${shipments.length} shipments [match ${match.match_id}] => [santa ${match.santa_participant_id}] and [giftee ${match.giftee_participant_id}]`
 				);
@@ -198,8 +196,21 @@ const command: ICommand = {
 				} else if (notReceivedYet.length === 1) {
 					// if one shipment
 					//    mark as received
+					const santaMember = await guild.members.fetch(
+						santa.discord_user_id
+					);
 					toMarkReceived.push(notReceivedYet[0].setReceived(true));
+					
 					toTellGiftee.push(gifteeOneShipmentReceived);
+					if (santaMember) {
+						toTellGiftee.push(
+							`Your Secret Santa was ${santaMember.displayName}!`
+						);
+					}
+					toTellGiftee.push(
+						`Thank you for participating in this Secret Santa exchange!`
+					);
+
 					toTellSanta.push(santaOneShipmentReceived);
 				} else {
 					// if many shipments
